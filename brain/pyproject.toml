@@ -20,13 +20,22 @@ dependencies = [
   "sentencepiece>=0.2.2",
   "sherpa-onnx-core>=1.13.8",
   "pycaw>=20260927",
+  "uiautomation>=2.0.29",
+  "pillow>=13.0.0",
+  "mss>=10.2.0",
 ]
 
 [project.scripts]
 familiar-brain = "familiar_brain.__main__:main"
 
 [dependency-groups]
-dev = ["pytest>=8", "pytest-asyncio>=0.23", "ruff>=0.6", "pyinstaller>=6.10"]
+dev = [
+    "pytest>=8",
+    "pytest-asyncio>=0.23",
+    "ruff>=0.6",
+    "pyinstaller>=6.10",
+    "pytest-timeout>=2.4.0",
+]
 
 [tool.uv.sources]
 familiar-protocol = { path = "../packages/protocol/python", editable = true }

@@ -146,6 +146,14 @@ class Brain:
         """Kill switch: stop the current turn, deny every pending confirmation, cancel what we can."""
         log.warning("KILL SWITCH")
         self.kill_event.set()
+        try:
+            from .tools.input import release_all
+
+            released = release_all()
+            if released:
+                log.warning("kill switch released %d held keys/buttons", released)
+        except Exception:
+            log.exception("release_all failed")
         for rid in list(self.pending_confirms):
             self.resolve_confirm(rid, False)
         await self.interrupt()

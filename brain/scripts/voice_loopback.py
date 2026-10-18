@@ -28,6 +28,7 @@ import websockets
 
 HERE = Path(__file__).resolve().parent.parent
 MODELS = Path(os.environ["LOCALAPPDATA"]) / "Familiar" / "models"
+sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
 
 def tts(text: str, voice: str = "am_michael") -> tuple[np.ndarray, int]:

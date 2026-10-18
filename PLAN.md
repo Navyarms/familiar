@@ -5,7 +5,7 @@ answer questions or operate your PC, and hear it reply through a locally rendere
 Everything runs on-device. The app ships as a single installer anyone can use, and the character,
 voice, and personality live in swappable **persona packs**.
 
-> Status: Phases 0–3 done from source (spikes, core loop, voice in, safe tools). Notes per phase in docs/. Next: Phase 4 (full desktop automation).
+> Status: Phases 0–4 done from source (spikes, core loop, voice in, safe tools, desktop automation). Notes per phase in docs/. Next: Phase 5 (memory).
 > Next step is Phase 1 (core loop). Nothing committed yet.
 
 ---
@@ -269,10 +269,10 @@ Throwaway prototypes that answer the questions the architecture depends on.
 - **Exit:** "open Spotify and turn the volume to 30" and "find the PDF I downloaded yesterday" work by voice — *verified through the virtual-cable loopback with Notepad standing in for Spotify (docs/phase3-safe-tools.md)*
 
 ### Phase 4 — Full desktop automation
-- [ ] input tools (type, hotkeys, click, scroll, drag) with interference guard
-- [ ] screen tool: screenshot → vision model; UI Automation element lookup
-- [ ] Multi-step agent loop with progress narration ("opening settings… clicking Bluetooth…")
-- **Exit:** "turn on Bluetooth" and "reply to the open email saying I'll be late" complete without help on a clean machine
+- [x] input tools (type, hotkeys, click, scroll; drag implemented, not exposed) with interference guard
+- [x] screen tool: screenshot → vision model; UI Automation element lookup (find/click/set/read by label)
+- [x] Multi-step agent loop with progress narration ("opening settings… clicking Bluetooth…")
+- **Exit:** "turn on Bluetooth" and "reply to the open email saying I'll be late" complete without help on a clean machine — *Bluetooth passes by voice (loopback); the email chain is untested against a real mail client (docs/phase4-desktop-automation.md)*
 
 ### Phase 5 — Memory
 - [ ] SQLite schema, embedding model download, retrieval into prompt

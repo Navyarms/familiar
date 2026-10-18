@@ -95,20 +95,18 @@ def set_reminder(ctx: ToolContext, when: str, text: str):
     return {"id": tid, "at": at.isoformat(timespec="minutes")}, f"reminder set for {at.strftime('%I:%M %p').lstrip('0')} (in {_fmt(delta)})"
 
 
-@tool("list_timers", group="timers", description="List running timers and reminders.")
-def list_timers(ctx: ToolContext):
+@tool("timers", group="timers", description="List running timers and reminders, or cancel one by id (0 = all).",
+      parameters=P(action=("string", "list | cancel", ["list", "cancel"], True), id=("integer", "timer id for cancel; 0 = all", False)),
+      describe=lambda a: "cancel the timer" if a.get("action") == "cancel" else "list timers")
+def timers(ctx: ToolContext, action: str, id: int = 0):
     now = dt.datetime.now()
-    items = [{"id": t["id"], "kind": t["kind"], "label": t["label"], "remaining_s": int((t["at"] - now).total_seconds())}
-             for t in _timers.values()]
-    if not items:
-        return [], "no timers running"
-    return items, "; ".join(f"{i['kind']} {i['id']}{' ' + i['label'] if i['label'] else ''}: {_fmt(i['remaining_s'])} left" for i in items)
-
-
-@tool("cancel_timer", group="timers", description="Cancel a timer or reminder by id (or all of them).",
-      parameters=P(id=("integer", "Timer id from list_timers; 0 = cancel all", True)), describe=lambda a: "cancel the timer")
-def cancel_timer(ctx: ToolContext, id: int):
-    ids = list(_timers) if id == 0 else [id]
+    if action == "list":
+        items = [{"id": t["id"], "kind": t["kind"], "label": t["label"], "remaining_s": int((t["at"] - now).total_seconds())}
+                 for t in _timers.values()]
+        if not items:
+            return [], "no timers running"
+        return items, "; ".join(f"{i['kind']} {i['id']}{' ' + i['label'] if i['label'] else ''}: {_fmt(i['remaining_s'])} left" for i in items)
+    ids = list(_timers) if not id else [id]
     n = 0
     for tid in ids:
         t = _timers.pop(tid, None)

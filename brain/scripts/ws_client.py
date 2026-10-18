@@ -18,6 +18,7 @@ from pathlib import Path
 import websockets
 
 HERE = Path(__file__).resolve().parent.parent
+sys.stdout.reconfigure(encoding="utf-8", errors="replace")  # models emit emoji; Windows consoles are cp1252
 
 
 async def main() -> None:

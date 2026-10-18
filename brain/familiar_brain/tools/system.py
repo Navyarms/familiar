@@ -66,7 +66,7 @@ def resolve_app(name: str) -> tuple[str, str] | None:
 
 @tool("open_app", group="system", description="Open or launch an application by its name, e.g. 'Spotify', 'Calculator', 'Settings', 'Chrome'.",
       parameters=P(name=("string", "Application name as a user would say it", True)),
-      describe=lambda a: f"open {a.get('name')}")
+      describe=lambda a: f"open {a.get('name')}", narrate=True)
 def open_app(ctx: ToolContext, name: str):
     r = resolve_app(name)
     if not r:
@@ -132,13 +132,6 @@ def set_volume(ctx: ToolContext, level: int):
     return {"level": level}, f"volume set to {level}%"
 
 
-@tool("get_volume", group="system", description="Read the current system volume and mute state.")
-def get_volume(ctx: ToolContext):
-    ep = _endpoint()
-    lvl, muted = round(ep.GetMasterVolumeLevelScalar() * 100), bool(ep.GetMute())
-    return {"level": lvl, "muted": muted}, f"volume is {lvl}%{' and muted' if muted else ''}"
-
-
 @tool("set_mute", group="system", description="Mute or unmute the system audio.",
       parameters=P(muted=("boolean", "true to mute, false to unmute", True)), describe=lambda a: ("mute" if a.get("muted") else "unmute") + " the audio")
 def set_mute(ctx: ToolContext, muted: bool):
@@ -159,43 +152,23 @@ def media_control(ctx: ToolContext, action: str):
     return {"action": action}, f"media {action.replace('_', '/')}"
 
 
-@tool("set_brightness", group="system", description="Set the screen brightness 0-100 (laptops and some monitors only).",
-      parameters=P(level=("integer", "0-100", True)), describe=lambda a: f"set brightness to {a.get('level')}%")
-def set_brightness(ctx: ToolContext, level: int):
-    level = max(0, min(100, int(level)))
-    cmd = ["powershell", "-NoProfile", "-Command",
-           f"(Get-WmiObject -Namespace root/WMI -Class WmiMonitorBrightnessMethods).WmiSetBrightness(1,{level})"]
-    r = subprocess.run(cmd, capture_output=True, text=True, timeout=10, creationflags=_NOWIN)
-    if r.returncode != 0 or "Exception" in (r.stderr + r.stdout):
-        return {"ok": False}, "this display doesn't support software brightness control"
-    return {"level": level}, f"brightness set to {level}%"
-
-
-@tool("lock_pc", group="system", description="Lock the computer (Windows lock screen).", permission="auto", risk="low",
-      describe=lambda a: "lock the PC")
-def lock_pc(ctx: ToolContext):
-    ctypes.windll.user32.LockWorkStation()
-    return {"locked": True}, "locked"
-
-
-@tool("sleep_pc", group="system", description="Put the computer to sleep.", permission="confirm", risk="high", describe=lambda a: "put the PC to sleep")
-def sleep_pc(ctx: ToolContext):
-    subprocess.Popen(["rundll32.exe", "powrprof.dll,SetSuspendState", "0,1,0"], creationflags=_NOWIN)
-    return {"sleeping": True}, "going to sleep"
-
-
-@tool("shutdown_pc", group="system", description="Shut down or restart the computer after a short countdown (can be cancelled with cancel_shutdown).",
-      parameters=P(restart=("boolean", "true = restart, false = shut down", False), delay_s=("integer", "seconds before it happens, default 30", False)),
-      permission="confirm", risk="high", describe=lambda a: ("restart" if a.get("restart") else "shut down") + f" the PC in {a.get('delay_s', 30)} seconds")
-def shutdown_pc(ctx: ToolContext, restart: bool = False, delay_s: int = 30):
-    subprocess.run(["shutdown", "/r" if restart else "/s", "/t", str(max(5, int(delay_s)))], creationflags=_NOWIN)
-    return {"scheduled": True}, f"{'restart' if restart else 'shutdown'} in {delay_s} seconds; say cancel to stop it"
-
-
-@tool("cancel_shutdown", group="system", description="Cancel a pending shutdown or restart.", describe=lambda a: "cancel the shutdown")
-def cancel_shutdown(ctx: ToolContext):
-    r = subprocess.run(["shutdown", "/a"], capture_output=True, text=True, creationflags=_NOWIN)
-    return {"cancelled": r.returncode == 0}, "shutdown cancelled" if r.returncode == 0 else "there was no shutdown pending"
+@tool("power", group="system", description="Lock the PC, put it to sleep, shut down or restart (30 s countdown), or cancel a pending shutdown.",
+      parameters=P(action=("string", "lock | sleep | shutdown | restart | cancel", ["lock", "sleep", "shutdown", "restart", "cancel"], True)),
+      permission="auto", risk="high", permission_for=lambda a: None if a.get("action") in ("lock", "cancel") else "confirm",
+      describe=lambda a: {"lock": "lock the PC", "sleep": "put the PC to sleep", "shutdown": "shut down the PC in 30 seconds",
+                          "restart": "restart the PC in 30 seconds"}.get(a.get("action"), "cancel the shutdown"))
+def power(ctx: ToolContext, action: str):
+    if action == "lock":
+        ctypes.windll.user32.LockWorkStation()
+        return {"locked": True}, "locked"
+    if action == "sleep":
+        subprocess.Popen(["rundll32.exe", "powrprof.dll,SetSuspendState", "0,1,0"], creationflags=_NOWIN)
+        return {"sleeping": True}, "going to sleep"
+    if action == "cancel":
+        r = subprocess.run(["shutdown", "/a"], capture_output=True, text=True, creationflags=_NOWIN)
+        return {"cancelled": r.returncode == 0}, "shutdown cancelled" if r.returncode == 0 else "there was no shutdown pending"
+    subprocess.run(["shutdown", "/r" if action == "restart" else "/s", "/t", "30"], creationflags=_NOWIN)
+    return {"scheduled": action}, f"{action} in 30 seconds; say cancel to stop it"
 
 
 @tool("get_datetime", group="system", description="Current local date, time and weekday. Use this whenever the user asks what time or day it is.")
@@ -205,14 +178,19 @@ def get_datetime(ctx: ToolContext):
     return {"iso": now.isoformat(timespec="minutes"), "text": s}, s
 
 
-@tool("system_info", group="system", description="Battery, CPU load, memory use, OS version and uptime of this PC.")
+@tool("system_info", group="system", description="Current volume/mute, battery, CPU and memory load, OS version, uptime.")
 def system_info(ctx: ToolContext):
     bat = psutil.sensors_battery()
     vm = psutil.virtual_memory()
     up = dt.timedelta(seconds=int(psutil.boot_time() and (dt.datetime.now().timestamp() - psutil.boot_time())))
+    try:
+        ep = _endpoint()
+        vol, muted = round(ep.GetMasterVolumeLevelScalar() * 100), bool(ep.GetMute())
+    except Exception:
+        vol, muted = None, None
     info = {"os": platform.platform(), "cpu_percent": psutil.cpu_percent(interval=0.3), "ram_percent": vm.percent,
             "ram_total_gb": round(vm.total / 2**30, 1), "battery_percent": bat.percent if bat else None,
-            "plugged_in": bat.power_plugged if bat else None, "uptime": str(up)}
-    s = f"CPU {info['cpu_percent']}%, RAM {vm.percent}% of {info['ram_total_gb']} GB"
+            "plugged_in": bat.power_plugged if bat else None, "uptime": str(up), "volume": vol, "muted": muted}
+    s = f"volume {vol}%{' muted' if muted else ''}, CPU {info['cpu_percent']}%, RAM {vm.percent}% of {info['ram_total_gb']} GB"
     s += f", battery {bat.percent}%{' charging' if bat.power_plugged else ''}" if bat else ", no battery (desktop)"
     return info, s

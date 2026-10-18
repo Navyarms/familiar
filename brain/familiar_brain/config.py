@@ -90,6 +90,9 @@ class Settings:
     file_roots: list = field(default_factory=list)  # extra folders the file tools may use
     web_enabled: bool = True
     confirm_timeout_s: float = 90.0
+    interference_guard: bool = True  # pause automation while the user is using mouse/keyboard
+    vision_max_width: int = 1024  # screenshot width sent to the vision model
+    narrate_tools: bool = True  # short spoken progress notes during multi-step automation
     extra: dict = field(default_factory=dict)
 
     @staticmethod

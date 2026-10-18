@@ -5,7 +5,6 @@ from __future__ import annotations
 import datetime as dt
 import os
 import shutil
-import subprocess
 import time
 from pathlib import Path
 
@@ -57,8 +56,7 @@ def _fmt_size(n: int) -> str:
 
 
 @tool("search_files", group="files",
-      description="Find files by name in the user's folders (Downloads, Documents, Desktop, Pictures, Videos, Music). "
-                  "Use `ext` for a type like 'pdf', and `days` to limit to recently modified files (yesterday = 2).",
+      description="Find files in the user's folders (Downloads, Documents, Desktop, Pictures, Videos, Music) by name words, type and age.",
       parameters=P(query=("string", "Words from the file name; empty string = any file", False),
                    ext=("string", "Extension without the dot, e.g. 'pdf', 'xlsx', 'png'", False),
                    days=("integer", "Only files modified within this many days", False),
@@ -111,16 +109,6 @@ def open_file(ctx: ToolContext, path: str):
         return {"opened": False}, "that location isn't in the folders I'm allowed to open"
     os.startfile(str(p))
     return {"opened": True}, f"opened {p.name}"
-
-
-@tool("reveal_file", group="files", description="Show a file in File Explorer (selects it).",
-      parameters=P(path=("string", "Full path", True)), describe=lambda a: f"show {Path(str(a.get('path', ''))).name} in Explorer")
-def reveal_file(ctx: ToolContext, path: str):
-    p = Path(path)
-    if not p.exists():
-        return {"ok": False}, f"{p.name} doesn't exist"
-    subprocess.Popen(["explorer.exe", "/select,", str(p)])
-    return {"ok": True}, f"showing {p.name} in Explorer"
 
 
 @tool("read_file", group="files", description="Read the beginning of a text file (txt, md, json, csv, code).",

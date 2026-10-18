@@ -67,8 +67,24 @@ class LlmClient:
         log.info("prefix warmed in %.2fs (%s prompt tokens)", dt, r.json().get("usage", {}).get("prompt_tokens"))
         return dt
 
+    async def ask_image(self, png: bytes, prompt: str, *, max_tokens: int = 220) -> str:
+        """One non-streamed vision question (needs llama-server started with --mmproj)."""
+        import base64
+
+        b64 = base64.b64encode(png).decode("ascii")
+        body = {"max_tokens": max_tokens, "temperature": 0.2, "cache_prompt": False,
+                "chat_template_kwargs": {"enable_thinking": False},
+                "messages": [{"role": "user", "content": [
+                    {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{b64}"}},
+                    {"type": "text", "text": prompt}]}]}
+        r = await self._client.post(f"{self.base_url}/v1/chat/completions", json=body, timeout=httpx.Timeout(10, read=300))
+        if r.status_code >= 400:
+            raise RuntimeError(f"vision request failed: {r.text[:200]}")
+        return (r.json()["choices"][0]["message"].get("content") or "").strip()
+
     async def stream(self, messages: list[dict], *, max_tokens: int = 400, temperature: float = 0.7,
-                     tools: list[dict] | None = None, stats: StreamStats | None = None) -> AsyncIterator[str]:
+                     tools: list[dict] | None = None, stats: StreamStats | None = None,
+                     tool_choice: str = "auto") -> AsyncIterator[str]:
         """Yields content deltas. Reasoning deltas (thinking) are skipped. Tool calls are assembled into `stats.tool_calls`."""
         stats = stats if stats is not None else StreamStats()
         body = {"messages": messages, "max_tokens": max_tokens, "temperature": temperature, "stream": True,
@@ -76,7 +92,7 @@ class LlmClient:
                 "chat_template_kwargs": {"enable_thinking": self.thinking}}
         if tools:
             body["tools"] = tools
-            body["tool_choice"] = "auto"
+            body["tool_choice"] = tool_choice  # "auto" | "required"
             body["parallel_tool_calls"] = True
         t0 = time.monotonic()
         partial: dict[int, ToolCall] = {}

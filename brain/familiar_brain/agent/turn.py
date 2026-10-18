@@ -10,6 +10,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import re
 import time
 import uuid
 from collections.abc import Awaitable, Callable
@@ -44,17 +45,24 @@ TOOL_INSTRUCTIONS = (
     "4. search_files: put only the file-name words in query (often empty), the type in ext, and days=1 for today or "
     "yesterday, days=7 for this week. open_app launches programs by name. get_weather for weather. web_search for news, "
     "prices, scores, or facts you are unsure about; if the snippets do not contain the answer, call fetch_page on the "
-    "best result's url before answering. remember when the user tells you something about themselves to keep."
+    "best result's url before answering. remember when the user tells you something about themselves to keep.\n"
+    "5. Operating apps: one tool call at a time, check each result. Inside an app: focus_window or open_app first, then "
+    "find_elements / click_element / set_element_text / read_window_text by label (fast, exact). type_text and press_keys "
+    "for typing and shortcuts; click only with coordinates from find_elements; look_at_screen only when the element tools "
+    "cannot see what you need. Bluetooth: set_bluetooth. You may say two to four words about the step, but ALWAYS put the "
+    "tool call in the same response as those words; a response that only announces an action does nothing. If something "
+    "is not where you expect after two tries, stop and tell the user what you see."
 )
 MEMORY_PREFIX = "\n\nThings you remember about the user:\n"
+ANNOUNCE_RE = re.compile(r"^(?:\[\w+\]\s*)?(?:i['\u2019]ll|i will|let me|i['\u2019]m going to|checking|clicking|opening|looking|reading|typing|turning|setting|searching|finding|closing|pressing|focusing|snapping|minimizing|maximizing)\b", re.I)
 
 
-def _ex(user: str, tool: str, args: dict, result: str, reply: str, cid: str) -> list[dict]:
+def _ex(user: str, tool: str, args: dict, result: str, reply: str, cid: str, said: str | None = None) -> list[dict]:
     import json as _json
 
     return [
         {"role": "user", "content": user},
-        {"role": "assistant", "content": None, "tool_calls": [{"id": cid, "type": "function", "function": {"name": tool, "arguments": _json.dumps(args)}}]},
+        {"role": "assistant", "content": said, "tool_calls": [{"id": cid, "type": "function", "function": {"name": tool, "arguments": _json.dumps(args)}}]},
         {"role": "tool", "tool_call_id": cid, "name": tool, "content": _json.dumps({"ok": True, "summary": result})},
         {"role": "assistant", "content": reply},
     ]
@@ -63,8 +71,9 @@ def _ex(user: str, tool: str, args: dict, result: str, reply: str, cid: str) -> 
 # Worked examples for small models: they sit in the cached prefix, so they cost nothing per turn.
 FEW_SHOT: list[dict] = [
     *_ex("Remember that I take my coffee black.", "remember", {"fact": "The user takes their coffee black"}, "I'll remember that", "Noted, black coffee it is.", "ex1"),
-    *_ex("Close Notepad.", "close_app", {"name": "Notepad"}, "asked Notepad to close", "Notepad is closed.", "ex2"),
-    *_ex("Mute the sound.", "set_mute", {"muted": True}, "muted", "Muted.", "ex3"),
+    *_ex("Close Notepad.", "close_app", {"name": "Notepad"}, "asked Notepad to close", "Notepad is closed.", "ex2", said="Closing Notepad."),
+    *_ex("What does the Mail window say?", "read_window_text", {"window": "Mail"}, "read 240 characters from Mail: 'Hi, can we move lunch to 1?'",
+         "The email asks if lunch can move to one o'clock.", "ex3", said="Reading it."),
 ]
 
 
@@ -81,7 +90,7 @@ class Turn:
     def __init__(self, *, llm: LlmClient, tts: KokoroTTS | None, persona: Persona, history: list[dict],
                  send: Send, speak: bool = True, max_tokens: int = 400, registry: ToolRegistry | None = None,
                  ctx: ToolContext | None = None, confirm: Confirm | None = None, memories: list[str] | None = None,
-                 max_steps: int = 6):
+                 max_steps: int = 10):
         self.llm, self.tts, self.persona, self.history, self.send = llm, tts, persona, history, send
         self.speak = speak and tts is not None
         self.max_tokens = max_tokens
@@ -92,6 +101,7 @@ class Turn:
         self.first_audio_s: float | None = None
         self.tool_log: list[dict] = []
         self._sid = 0  # sentence counter across steps
+        self._spoke_this_step = False
 
     # ------------------------------------------------------------------ main
     async def run(self, user_text: str) -> str:
@@ -111,12 +121,24 @@ class Turn:
         tts_task = asyncio.create_task(self._tts_worker(t0)) if self.speak else None
         await self.send({"type": "state", "state": "thinking"})
         try:
+            nudged = False
+            force_tool = False
             for step in range(self.max_steps):
                 stats = StreamStats()
                 last_stats = stats if step == 0 else last_stats
-                content = await self._stream_step(messages, tools, stats)
+                content = await self._stream_step(messages, tools, stats, force_tool=force_tool)
+                force_tool = False
                 full_spoken += content
                 if not stats.tool_calls:
+                    # Small models sometimes narrate the action and stop. Once per turn, push them to actually call it.
+                    first = re.split(r"[.!?\n]", content.strip(), maxsplit=1)[0].strip()
+                    if use_tools and not nudged and step < self.max_steps - 1 and len(first) <= 40 and ANNOUNCE_RE.match(first):
+                        nudged = True
+                        force_tool = True  # the retry must produce a tool call (tool_choice=required)
+                        log.info("nudging: model announced %r without a tool call", content.strip()[:60])
+                        messages.append({"role": "assistant", "content": content.strip()})
+                        messages.append({"role": "user", "content": "(You announced an action but did not call the tool. Call it now.)"})
+                        continue
                     break
                 if step == self.max_steps - 1:
                     log.warning("tool step limit reached")
@@ -153,12 +175,14 @@ class Turn:
                                  "first_audio_s": self.first_audio_s, "tools": len(self.tool_log) or None}.items() if v is not None}})
         return full_spoken
 
-    async def _stream_step(self, messages: list[dict], tools: list[dict] | None, stats: StreamStats) -> str:
+    async def _stream_step(self, messages: list[dict], tools: list[dict] | None, stats: StreamStats, *, force_tool: bool = False) -> str:
         stripper = TagStripper(set(self.persona.expression_tags()))
         chunker = SentenceChunker()
         chunker.emitted = self._sid
         content = ""
-        async for tok in self.llm.stream(messages, max_tokens=self.max_tokens, stats=stats, tools=tools, temperature=0.4 if tools else 0.7):
+        self._spoke_this_step = False
+        async for tok in self.llm.stream(messages, max_tokens=self.max_tokens, stats=stats, tools=tools, temperature=0.4 if tools else 0.7,
+                                         tool_choice="required" if (force_tool and tools) else "auto"):
             clean = stripper.feed(tok)
             self._flush_tags(stripper, chunker)
             if clean:
@@ -176,6 +200,7 @@ class Turn:
         for s in chunker.flush():
             await self._tts_queue.put((chunker.emitted, s))
         self._sid = chunker.emitted
+        self._spoke_this_step = bool(content.strip())
         if content and stats.tool_calls:
             await self.send({"type": "reply.token", "turn_id": self.turn_id, "text": "\n"})
             content += "\n"
@@ -196,7 +221,7 @@ class Turn:
         elif parse_err:
             result = {"ok": False, "summary": f"bad arguments for {call.name}: {parse_err[:120]}"}
         else:
-            perm = self.registry.permission(call.name)
+            perm = self.registry.permission(call.name, args)
             desc = spec.human(args)
             if perm == "blocked":
                 result = {"ok": False, "summary": f"{call.name} is turned off in settings"}
@@ -212,6 +237,8 @@ class Turn:
                     result = {"ok": False, "summary": "the user declined" if perm == "confirm" else "not allowed"}
                 else:
                     await self.send({"type": "state", "state": "executing", "detail": desc})
+                    if spec.narrate and not self._spoke_this_step and getattr(self.ctx.settings, "narrate_tools", True):
+                        self._say(desc[0].upper() + desc[1:] + ".")
                     await self.send({"type": "tool.start", "request_id": request_id, "tool": call.name, "args": args, "description": desc})
                     result = await self.registry.run(call.name, args, self.ctx)
         await self.send({"type": "tool.result", "request_id": request_id, "tool": call.name, "ok": bool(result.get("ok")),

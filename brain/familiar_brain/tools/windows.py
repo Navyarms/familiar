@@ -134,67 +134,39 @@ def focus_window(ctx: ToolContext, title: str):
     return {"found": True, "title": w["title"]}, f"focused {w['title']}"
 
 
-@tool("minimize_window", group="windows", description="Minimize a window by title/app name.",
-      parameters=P(title=("string", "Part of the window title or app name", True)), describe=lambda a: f"minimize {a.get('title')}")
-def minimize_window(ctx: ToolContext, title: str):
-    w = find_window(title)
-    if not w:
-        return {"found": False}, f"no window matching {title}"
-    user32.ShowWindow(w["hwnd"], SW_MINIMIZE)
-    return {"found": True}, f"minimized {w['title']}"
-
-
-@tool("maximize_window", group="windows", description="Maximize a window by title/app name.",
-      parameters=P(title=("string", "Part of the window title or app name", True)), describe=lambda a: f"maximize {a.get('title')}")
-def maximize_window(ctx: ToolContext, title: str):
-    w = find_window(title)
-    if not w:
-        return {"found": False}, f"no window matching {title}"
-    user32.ShowWindow(w["hwnd"], SW_MAXIMIZE)
-    _focus(w["hwnd"])
-    return {"found": True}, f"maximized {w['title']}"
-
-
-@tool("close_window", group="windows", description="Close one window by title/app name (asks it to close, unsaved work may prompt).",
-      parameters=P(title=("string", "Part of the window title or app name", True)), permission="confirm", risk="medium",
-      describe=lambda a: f"close the {a.get('title')} window")
-def close_window(ctx: ToolContext, title: str):
-    w = find_window(title)
-    if not w:
-        return {"found": False}, f"no window matching {title}"
-    user32.PostMessageW(w["hwnd"], WM_CLOSE, 0, 0)
-    return {"found": True}, f"closed {w['title']}"
-
-
-@tool("snap_window", group="windows", description="Snap a window to the left or right half of its screen, or center it.",
-      parameters=P(title=("string", "Part of the window title or app name", True), position=("string", "left | right | center", ["left", "right", "center"], True)),
-      describe=lambda a: f"snap {a.get('title')} to the {a.get('position')}")
-def snap_window(ctx: ToolContext, title: str, position: str):
+@tool("window_action", group="windows", description="Minimize, maximize, restore, close, or snap (left/right/center) a window by its title or app name.",
+      parameters=P(title=("string", "Part of the window title or app name", True),
+                   action=("string", "minimize | maximize | restore | close | snap_left | snap_right | center", ["minimize", "maximize", "restore", "close", "snap_left", "snap_right", "center"], True)),
+      describe=lambda a: f"{str(a.get('action', '')).replace('_', ' ')} the {a.get('title')} window",
+      permission_for=lambda a: "confirm" if a.get("action") == "close" else None, risk="medium")
+def window_action(ctx: ToolContext, title: str, action: str):
     w = find_window(title)
     if not w:
         return {"found": False}, f"no window matching {title}"
     h = w["hwnd"]
-    user32.ShowWindow(h, SW_RESTORE)
-    left, t, r, b = _work_area(h)
-    W, H = r - left, b - t
-    if position == "left":
-        x, y, cw, ch = left, t, W // 2, H
-    elif position == "right":
-        x, y, cw, ch = left + W // 2, t, W - W // 2, H
+    if action == "minimize":
+        user32.ShowWindow(h, SW_MINIMIZE)
+    elif action == "maximize":
+        user32.ShowWindow(h, SW_MAXIMIZE)
+        _focus(h)
+    elif action == "restore":
+        user32.ShowWindow(h, SW_RESTORE)
+        _focus(h)
+    elif action == "close":
+        user32.PostMessageW(h, WM_CLOSE, 0, 0)
     else:
-        cw, ch = int(W * 0.7), int(H * 0.8)
-        x, y = left + (W - cw) // 2, t + (H - ch) // 2
-    user32.MoveWindow(h, x, y, cw, ch, True)
-    _focus(h)
-    return {"found": True, "rect": [x, y, x + cw, y + ch]}, f"snapped {w['title']} {position}"
+        user32.ShowWindow(h, SW_RESTORE)
+        left, t, r, b = _work_area(h)
+        W, H = r - left, b - t
+        if action == "snap_left":
+            x, y, cw, ch = left, t, W // 2, H
+        elif action == "snap_right":
+            x, y, cw, ch = left + W // 2, t, W - W // 2, H
+        else:
+            cw, ch = int(W * 0.7), int(H * 0.8)
+            x, y = left + (W - cw) // 2, t + (H - ch) // 2
+        user32.MoveWindow(h, x, y, cw, ch, True)
+        _focus(h)
+    return {"found": True, "title": w["title"], "action": action}, f"{action.replace('_', ' ')}: {w['title']}"
 
 
-@tool("minimize_all", group="windows", description="Minimize EVERY window to show the desktop. Only when the user says 'show the desktop' or 'minimize everything'; for one app use minimize_window.",
-      describe=lambda a: "show the desktop")
-def minimize_all(ctx: ToolContext):
-    # Win+D equivalent through the shell COM object (works without sending keystrokes)
-    import subprocess
-
-    subprocess.run(["powershell", "-NoProfile", "-Command", "(New-Object -ComObject Shell.Application).MinimizeAll()"],
-                   creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0), timeout=10)
-    return {"ok": True}, "showing the desktop"

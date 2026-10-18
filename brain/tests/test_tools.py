@@ -24,7 +24,7 @@ class FakeLLM:
         self.steps = list(steps)
         self.calls: list[list[dict]] = []
 
-    async def stream(self, messages, *, max_tokens=400, stats: StreamStats = None, tools=None, temperature=0.7):
+    async def stream(self, messages, *, max_tokens=400, stats: StreamStats = None, tools=None, temperature=0.7, **kwargs):
         self.calls.append([dict(m) for m in messages])
         content, tool_calls = self.steps.pop(0) if self.steps else ("", [])
         for tok in content.split(" "):

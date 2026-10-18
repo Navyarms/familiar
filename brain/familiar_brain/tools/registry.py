@@ -43,6 +43,8 @@ class ToolSpec:
     risk: Risk = "low"
     describe: Callable[[dict], str] | None = None  # human sentence for the confirm card
     timeout_s: float = 30.0
+    narrate: bool = False  # speak the description when the tool starts (slow tools, multi-step automation)
+    permission_for: Callable[[dict], Permission | None] | None = None  # per-call override, e.g. close actions need confirm
 
     def openai(self) -> dict:
         return {"type": "function", "function": {"name": self.name, "description": self.description, "parameters": self.parameters}}
@@ -71,14 +73,17 @@ class ToolRegistry:
         if not getattr(settings, "web_enabled", True):
             self.disabled_groups.add("web")
 
-    def permission(self, name: str) -> Permission:
+    def permission(self, name: str, args: dict | None = None) -> Permission:
         spec = self.tools.get(name)
         if not spec:
             return "blocked"
         if spec.group in self.disabled_groups:
             return "blocked"
         p = self.overrides.get(name) or self.overrides.get(f"group:{spec.group}") or spec.permission
-        return p if p in ("auto", "confirm", "blocked") else spec.permission
+        p = p if p in ("auto", "confirm", "blocked") else spec.permission
+        if args is not None and spec.permission_for and p == "auto":
+            p = spec.permission_for(args) or p
+        return p
 
     def available(self) -> list[ToolSpec]:
         """Tools exposed to the model (blocked ones are hidden so it does not keep trying them)."""
@@ -149,13 +154,15 @@ REGISTRY = ToolRegistry()
 
 
 def tool(name: str, *, group: str, description: str, parameters: dict | None = None, permission: Permission = "auto",
-         risk: Risk = "low", describe: Callable[[dict], str] | None = None, timeout_s: float = 30.0):
+         risk: Risk = "low", describe: Callable[[dict], str] | None = None, timeout_s: float = 30.0, narrate: bool = False,
+         permission_for: Callable[[dict], Permission | None] | None = None):
     """Decorator. `parameters` is the JSON schema for the arguments (object); default = no arguments."""
 
     def deco(fn):
         REGISTRY.register(ToolSpec(name=name, group=group, description=description,
                                    parameters=parameters or {"type": "object", "properties": {}},
-                                   handler=fn, permission=permission, risk=risk, describe=describe, timeout_s=timeout_s))
+                                   handler=fn, permission=permission, risk=risk, describe=describe, timeout_s=timeout_s,
+                                   narrate=narrate, permission_for=permission_for))
         return fn
 
     return deco
