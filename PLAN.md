@@ -5,7 +5,7 @@ answer questions or operate your PC, and hear it reply through a locally rendere
 Everything runs on-device. The app ships as a single installer anyone can use, and the character,
 voice, and personality live in swappable **persona packs**.
 
-> Status: Phases 0–5 done from source (spikes, core loop, voice in, safe tools, desktop automation, memory). Notes per phase in docs/. Next: Phase 6 (polish and ship v0.1).
+> Status: Phases 0–5 done; Phase 6 built from source (settings, persona manager, installer, updater, docs) and waiting on the public repo + first release. Notes per phase in docs/.
 > Next step is Phase 1 (core loop). Nothing committed yet.
 
 ---
@@ -281,12 +281,12 @@ Throwaway prototypes that answer the questions the architecture depends on.
 - **Exit:** tell it your dog's name, restart the PC, it remembers — *verified across two brain processes (docs/phase5-memory.md)*
 
 ### Phase 6 — Polish and ship v0.1
-- [ ] Settings UI complete, persona manager, voice preview
-- [ ] NSIS installer, auto-update via GitHub Releases, startup-with-Windows
-- [ ] Docs: user guide, persona pack spec, tool safety
-- [ ] Code signing decision (unsigned = SmartScreen warning; Azure Trusted Signing is the cheap route)
-- [ ] Public GitHub repo, MIT license, first release
-- **Exit:** a stranger installs it from the Releases page and has a working Wisp in under 10 minutes
+- [x] Settings UI complete, persona manager, voice preview
+- [x] NSIS installer, auto-update via GitHub Releases (wired; activates once the repo exists), startup-with-Windows
+- [x] Docs: user guide, persona pack spec, tool safety
+- [x] Code signing decision: unsigned for v0.1, Azure Trusted Signing when there is a home (docs/phase6-ship.md)
+- [ ] Public GitHub repo, MIT license, first release — *needs the owner's GitHub account; release workflow is ready*
+- **Exit:** a stranger installs it from the Releases page and has a working Wisp in under 10 minutes — *pending the release and a clean-VM test*
 
 ### Phase 7 — Optional add-ons
 - [ ] Voice cloning add-on (evaluate Chatterbox, F5-TTS, GPT-SoVITS), GPU only, opt-in download

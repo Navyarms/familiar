@@ -1,0 +1,33 @@
+name: release
+
+# Tag a version (v0.1.0) to build the brain (PyInstaller) and the Windows installer (electron-builder) and attach
+# them to a GitHub Release. electron-updater reads latest.yml from the same release for auto-update.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Brain (PyInstaller one-folder)
+        run: |
+          uv sync --project brain
+          uv run --project brain pyinstaller brain/familiar-brain.spec --noconfirm --distpath brain/dist --workpath brain/build
+      - name: Shell + installer
+        run: |
+          npm ci
+          npm run build
+          npx --workspace apps/shell electron-builder --win --publish always
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
