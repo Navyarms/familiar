@@ -49,7 +49,21 @@ word, barge-in, sensitivity), Models (tier, override, custom GGUF, context, down
 - `.github/workflows/release.yml`: on a `v*` tag, builds the brain and the installer on `windows-latest` and
   publishes the Release with `latest.yml`.
 
-Installer size and install test: see the measurements section below.
+## Measurements (dev machine)
+
+| Item | Result |
+|---|---|
+| `Familiar-Setup-0.1.0.exe` | **207 MB** (NSIS, per-user, with `latest.yml` + blockmap for the updater) |
+| Unpacked install (`%LOCALAPPDATA%\Programs\Familiar`) | 728 MB (brain 332 MB, Electron ~250 MB, personas without VRM) |
+| Silent install `Familiar-Setup-0.1.0.exe /S` | 15 s |
+| First launch of the installed app → brain idle with voice | ~25 s (llama-server 2.4 s, prefix warm 19 s at 5,065 tokens, whisper 3.5 s) |
+| Memory while running (T1) | Familiar.exe processes ~760 MB total, familiar-brain.exe 480 MB, llama-server 5.9 GB |
+| Hotkey summon on the installed build | panel opened; overlay rendered the VRM; tray icon present |
+
+The install test ran on the dev machine, which already had the models and settings in `%LOCALAPPDATA%\Familiar`,
+so it covers the installer, resource layout (`resources/brain`, `resources/personas`), the frozen brain and the
+packaged shell, but not the first-run download path on a clean PC. Note for scripts: Git Bash rewrites `/S` into a
+path; launch the installer from PowerShell (`Start-Process … -ArgumentList '/S' -Wait`).
 
 ## Code signing decision
 
