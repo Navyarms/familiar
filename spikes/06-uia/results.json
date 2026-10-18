@@ -1,0 +1,28 @@
+{
+  "explorer": {
+    "found_window": true,
+    "n_elements": 60,
+    "downloads_found": true,
+    "downloads_click_navigated": true,
+    "invoke_back_ok": true
+  },
+  "settings": {
+    "found_window": true,
+    "n_elements": 49,
+    "bluetooth_nav_found": true,
+    "bluetooth_page_ok": true,
+    "bluetooth_toggle_state": "1"
+  },
+  "timings_s": {
+    "explorer open + window found": 0.942,
+    "enumerate 60 interactive elements": 0.203,
+    "find TreeItem 'Downloads*'": 0.07,
+    "navigate to Downloads via SelectionItemPattern + settle": 1.547,
+    "InvokePattern on 'Back' button": 1.302,
+    "settings open + window found": 2.48,
+    "enumerate 49 interactive elements": 0.178,
+    "find ListItem 'Bluetooth & devices'": 0.024,
+    "click + settle": 2.055,
+    "find 'Bluetooth' toggle + read state (incl. retries)": 0.115
+  }
+}

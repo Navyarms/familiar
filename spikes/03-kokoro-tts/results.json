@@ -1,0 +1,85 @@
+{
+  "onnxruntime": "1.31.0",
+  "providers": [
+    "AzureExecutionProvider",
+    "CPUExecutionProvider"
+  ],
+  "voice": "af_heart",
+  "sample_rate": 24000,
+  "rows": [
+    {
+      "sentence": "Sure, opening Spotify now.",
+      "chars": 26,
+      "audio_s": 1.86,
+      "latency_median_s": 0.286,
+      "latency_min_s": 0.275,
+      "rtf": 0.154
+    },
+    {
+      "sentence": "The sky looks blue because air scatters short wavelengths of sunlight more than long ones.",
+      "chars": 90,
+      "audio_s": 4.86,
+      "latency_median_s": 2.027,
+      "latency_min_s": 0.615,
+      "rtf": 0.417
+    },
+    {
+      "sentence": "I found three PDF files in your Downloads folder from yesterday; the newest one is called quarterly report, do you want me to open it?",
+      "chars": 134,
+      "audio_s": 8.02,
+      "latency_median_s": 1.07,
+      "latency_min_s": 0.904,
+      "rtf": 0.133
+    },
+    {
+      "sentence": "Done.",
+      "chars": 5,
+      "audio_s": 0.66,
+      "latency_median_s": 0.201,
+      "latency_min_s": 0.141,
+      "rtf": 0.304
+    },
+    {
+      "sentence": "Okay, I'll remind you in ten minutes to check the oven.",
+      "chars": 55,
+      "audio_s": 3.11,
+      "latency_median_s": 0.399,
+      "latency_min_s": 0.384,
+      "rtf": 0.128
+    }
+  ],
+  "stream_first_chunk_s": 0.9086335000010877,
+  "onnx_inputs": [
+    [
+      "tokens",
+      [
+        1,
+        "sequence_length"
+      ]
+    ],
+    [
+      "style",
+      [
+        1,
+        256
+      ]
+    ],
+    [
+      "speed",
+      [
+        1
+      ]
+    ]
+  ],
+  "onnx_outputs": [
+    [
+      "audio",
+      [
+        "audio_length"
+      ]
+    ]
+  ],
+  "phoneme_string_available": true,
+  "per_phoneme_timing_from_model": false,
+  "timing_sample": []
+}

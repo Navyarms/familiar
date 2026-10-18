@@ -1,0 +1,28 @@
+node_modules/
+dist/
+build/
+.venv/
+__pycache__/
+*.pyc
+runtimes/
+/models/
+personas/*/
+!personas/wisp/
+.env
+*.log
+spikes/_downloads/
+# phase 0 spike artifacts
+spikes/.venv/
+spikes/**/node_modules/
+spikes/**/dist/
+spikes/**/build/
+spikes/**/*.log
+spikes/**/*.wav
+spikes/**/*.png
+!docs/*.png
+spikes/**/*.spec
+# phase 1
+apps/shell/out/
+brain/dist/
+brain/build/
+brain/.venv/

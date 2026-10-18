@@ -1,0 +1,27 @@
+{
+ "corner_click_through": true,
+ "center_click_through": false,
+ "corner_again_click_through": true,
+ "fps_samples": [
+  203.3,
+  240.0,
+  240.0,
+  240.0,
+  240.0,
+  240.0,
+  240.0,
+  240.0,
+  240.0,
+  240.0,
+  240.0,
+  240.0,
+  240.0,
+  240.0,
+  240.0,
+  240.0,
+  240.0,
+  240.0
+ ],
+ "fps_avg": 237.9611111111111,
+ "fps_min": 203.3
+}

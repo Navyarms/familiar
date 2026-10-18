@@ -1,0 +1,19 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Familiar overlay</title>
+    <style>
+      html, body { margin: 0; padding: 0; background: transparent; overflow: hidden; width: 100%; height: 100%; }
+      canvas { display: block; }
+      #badge { position: fixed; left: 50%; bottom: 10px; transform: translateX(-50%); font: 12px system-ui, sans-serif;
+               color: #dfe7ff; background: rgba(20, 22, 30, .72); padding: 3px 10px; border-radius: 999px;
+               pointer-events: none; opacity: 0; transition: opacity .25s; white-space: nowrap; }
+      #badge.show { opacity: 1; }
+    </style>
+  </head>
+  <body>
+    <div id="badge"></div>
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>

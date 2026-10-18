@@ -1,0 +1,39 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  brain:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - name: Sync
+        run: uv sync --project brain
+      - name: Lint
+        run: uv run --project brain ruff check brain packages/protocol/python
+      - name: Test
+        run: uv run --project brain pytest -q brain/tests
+      - name: Protocol schema is up to date
+        shell: bash
+        run: |
+          cp packages/protocol/schema.json /tmp/schema.before.json
+          uv run --project brain python -m familiar_protocol.generate
+          diff -q /tmp/schema.before.json packages/protocol/schema.json
+
+  shell:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Build
+        run: npm run build

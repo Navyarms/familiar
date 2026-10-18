@@ -1,0 +1,254 @@
+{
+  "summary": {
+    "label": "qwen3-4b_16t_think",
+    "thinking": true,
+    "ttft_cold_prefix_median_s": 0.20792470000014873,
+    "ttft_cached_prefix_s": 0.19366699999955017,
+    "pp_tok_s_median": 21.16984567182505,
+    "tg_tok_s_median": 20.106297036001084,
+    "prompt_tokens": 1,
+    "tool_ok": 17,
+    "tool_total": 20,
+    "tool_latency_median_s": 7.167552599999908
+  },
+  "speed": [
+    {
+      "cached_prefix": false,
+      "ttft_s": 0.17275569999947038,
+      "total_s": 7.980257499999425,
+      "prompt_tokens": 1,
+      "pp_tok_s": 21.16984567182505,
+      "gen_tokens": 160,
+      "tg_tok_s": 20.11559254463005
+    },
+    {
+      "cached_prefix": false,
+      "ttft_s": 0.20792470000014873,
+      "total_s": 8.014440299999478,
+      "prompt_tokens": 1,
+      "pp_tok_s": 18.716777719547803,
+      "gen_tokens": 160,
+      "tg_tok_s": 20.097001527372118
+    },
+    {
+      "cached_prefix": false,
+      "ttft_s": 0.2558095999993384,
+      "total_s": 8.210269299999709,
+      "prompt_tokens": 19,
+      "pp_tok_s": 173.7158739737049,
+      "gen_tokens": 160,
+      "tg_tok_s": 19.749489525380017
+    },
+    {
+      "cached_prefix": true,
+      "ttft_s": 0.19366699999955017,
+      "total_s": 7.774048600000242,
+      "prompt_tokens": 19,
+      "pp_tok_s": 202.93724966622165,
+      "gen_tokens": 160,
+      "tg_tok_s": 20.711172153347082
+    }
+  ],
+  "tools": [
+    {
+      "task": "Open Spotify",
+      "expected": "open_app",
+      "got": "open_app",
+      "args": "{\"name\": \"Spotify\"}",
+      "valid_json": true,
+      "ok": true,
+      "latency_s": 6.309147399999347,
+      "content": ""
+    },
+    {
+      "task": "Turn the volume down to 30",
+      "expected": "set_volume",
+      "got": "set_volume",
+      "args": "{\"level\": 30}",
+      "valid_json": true,
+      "ok": true,
+      "latency_s": 5.037057800000184,
+      "content": ""
+    },
+    {
+      "task": "Mute the music",
+      "expected": "media_control",
+      "got": "media_control",
+      "args": "{\"action\": \"mute\"}",
+      "valid_json": true,
+      "ok": true,
+      "latency_s": 7.1282350000001315,
+      "content": ""
+    },
+    {
+      "task": "Skip this song",
+      "expected": "media_control",
+      "got": "media_control",
+      "args": "{\"action\": \"next\"}",
+      "valid_json": true,
+      "ok": true,
+      "latency_s": 11.5048397999999,
+      "content": ""
+    },
+    {
+      "task": "Bring up the Chrome window",
+      "expected": "focus_window",
+      "got": "focus_window",
+      "args": "{\"title\": \"Google Chrome\"}",
+      "valid_json": true,
+      "ok": true,
+      "latency_s": 6.934074499999042,
+      "content": ""
+    },
+    {
+      "task": "Type 'see you at 5' for me",
+      "expected": "type_text",
+      "got": "type_text",
+      "args": "{\"text\": \"see you at 5\"}",
+      "valid_json": true,
+      "ok": true,
+      "latency_s": 11.285084400000414,
+      "content": ""
+    },
+    {
+      "task": "Save this file",
+      "expected": "press_hotkey",
+      "got": null,
+      "args": null,
+      "valid_json": true,
+      "ok": false,
+      "latency_s": 13.909052000000884,
+      "content": "I can't save files directly. Would you like help finding a file, copying text to clipboard, or something else?"
+    },
+    {
+      "task": "Show me the desktop",
+      "expected": "press_hotkey",
+      "got": null,
+      "args": null,
+      "valid_json": true,
+      "ok": false,
+      "latency_s": 26.66098349999993,
+      "content": ""
+    },
+    {
+      "task": "Find the PDF I downloaded yesterday",
+      "expected": "search_files",
+      "got": "search_files",
+      "args": "{\"pattern\": \"PDF\", \"days\": 1}",
+      "valid_json": true,
+      "ok": true,
+      "latency_s": 9.644763399999647,
+      "content": ""
+    },
+    {
+      "task": "Look for any files named budget",
+      "expected": "search_files",
+      "got": "search_files",
+      "args": "{\"pattern\": \"budget\"}",
+      "valid_json": true,
+      "ok": true,
+      "latency_s": 6.938648499999545,
+      "content": ""
+    },
+    {
+      "task": "What's the weather in Seattle right now?",
+      "expected": "web_search",
+      "got": "web_search",
+      "args": "{\"query\": \"current weather in Seattle\"}",
+      "valid_json": true,
+      "ok": true,
+      "latency_s": 11.994846900000994,
+      "content": ""
+    },
+    {
+      "task": "Who won the last World Cup?",
+      "expected": "web_search",
+      "got": null,
+      "args": null,
+      "valid_json": true,
+      "ok": false,
+      "latency_s": 12.947149700001319,
+      "content": "The last World Cup was won by Argentina in 2022."
+    },
+    {
+      "task": "Remind me in 10 minutes to check the oven",
+      "expected": "set_timer",
+      "got": "set_timer",
+      "args": "{\"seconds\": 600, \"label\": \"Check oven\"}",
+      "valid_json": true,
+      "ok": true,
+      "latency_s": 7.206870199999685,
+      "content": ""
+    },
+    {
+      "task": "Set a 45 second timer",
+      "expected": "set_timer",
+      "got": "set_timer",
+      "args": "{\"seconds\": 45}",
+      "valid_json": true,
+      "ok": true,
+      "latency_s": 9.089779299998554,
+      "content": ""
+    },
+    {
+      "task": "Copy 'hello world' to my clipboard",
+      "expected": "clipboard_write",
+      "got": "clipboard_write",
+      "args": "{\"text\": \"hello world\"}",
+      "valid_json": true,
+      "ok": true,
+      "latency_s": 6.429565899999943,
+      "content": ""
+    },
+    {
+      "task": "Remember that my dog's name is Biscuit",
+      "expected": "remember",
+      "got": "remember",
+      "args": "{\"fact\": \"My dog's name is Biscuit\"}",
+      "valid_json": true,
+      "ok": true,
+      "latency_s": 6.747428799999398,
+      "content": ""
+    },
+    {
+      "task": "What's on my screen right now?",
+      "expected": "take_screenshot",
+      "got": "take_screenshot",
+      "args": "{}",
+      "valid_json": true,
+      "ok": true,
+      "latency_s": 7.765553100000034,
+      "content": ""
+    },
+    {
+      "task": "Pause the video",
+      "expected": "media_control",
+      "got": "media_control",
+      "args": "{\"action\": \"pause\"}",
+      "valid_json": true,
+      "ok": true,
+      "latency_s": 4.95467219999955,
+      "content": ""
+    },
+    {
+      "task": "Launch the calculator",
+      "expected": "open_app",
+      "got": "open_app",
+      "args": "{\"name\": \"Calculator\"}",
+      "valid_json": true,
+      "ok": true,
+      "latency_s": 4.361124500001097,
+      "content": ""
+    },
+    {
+      "task": "Set volume to max",
+      "expected": "set_volume",
+      "got": "set_volume",
+      "args": "{\"level\": 100}",
+      "valid_json": true,
+      "ok": true,
+      "latency_s": 7.100748900000326,
+      "content": ""
+    }
+  ]
+}

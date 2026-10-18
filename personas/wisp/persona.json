@@ -1,0 +1,11 @@
+{
+  "id": "wisp",
+  "name": "Wisp",
+  "version": "0.1.0",
+  "wake_phrase": "hey wisp",
+  "avatar": "avatar.vrm",
+  "prompt": "prompt.md",
+  "expressions": "expressions.json",
+  "voice": { "engine": "kokoro", "voice": "af_heart", "speed": 1.0, "pitch_shift": 0 },
+  "license": "MIT (original character)"
+}

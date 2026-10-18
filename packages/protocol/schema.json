@@ -1,0 +1,958 @@
+{
+  "$defs": {
+    "DownloadStartMsg": {
+      "additionalProperties": false,
+      "description": "Shell asks the brain to start (or resume) downloading what the tier needs.",
+      "properties": {
+        "type": {
+          "const": "models.download",
+          "default": "models.download",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "title": "DownloadStartMsg",
+      "type": "object"
+    },
+    "ErrorMsg": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "error",
+          "default": "error",
+          "title": "Type",
+          "type": "string"
+        },
+        "code": {
+          "title": "Code",
+          "type": "string"
+        },
+        "message": {
+          "title": "Message",
+          "type": "string"
+        },
+        "fatal": {
+          "default": false,
+          "title": "Fatal",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "code",
+        "message"
+      ],
+      "title": "ErrorMsg",
+      "type": "object"
+    },
+    "ExpressionMsg": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "expression",
+          "default": "expression",
+          "title": "Type",
+          "type": "string"
+        },
+        "tag": {
+          "title": "Tag",
+          "type": "string"
+        },
+        "sentence_id": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Apply when this sentence starts playing; null = now",
+          "title": "Sentence Id"
+        }
+      },
+      "required": [
+        "tag"
+      ],
+      "title": "ExpressionMsg",
+      "type": "object"
+    },
+    "ExpressionSpec": {
+      "additionalProperties": false,
+      "properties": {
+        "vrm": {
+          "description": "VRM expression name, e.g. 'happy'",
+          "title": "Vrm",
+          "type": "string"
+        },
+        "weight": {
+          "default": 1.0,
+          "title": "Weight",
+          "type": "number"
+        },
+        "decay_s": {
+          "default": 2.5,
+          "title": "Decay S",
+          "type": "number"
+        }
+      },
+      "required": [
+        "vrm"
+      ],
+      "title": "ExpressionSpec",
+      "type": "object"
+    },
+    "HelloMsg": {
+      "additionalProperties": false,
+      "description": "First frame after the socket opens.",
+      "properties": {
+        "type": {
+          "const": "hello",
+          "default": "hello",
+          "title": "Type",
+          "type": "string"
+        },
+        "protocol": {
+          "default": 1,
+          "title": "Protocol",
+          "type": "integer"
+        },
+        "brain_version": {
+          "title": "Brain Version",
+          "type": "string"
+        },
+        "persona": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PersonaInfo"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "brain_version"
+      ],
+      "title": "HelloMsg",
+      "type": "object"
+    },
+    "InterruptMsg": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "interrupt",
+          "default": "interrupt",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "title": "InterruptMsg",
+      "type": "object"
+    },
+    "KillSwitchMsg": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "kill_switch",
+          "default": "kill_switch",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "title": "KillSwitchMsg",
+      "type": "object"
+    },
+    "ModelDownloadProgressMsg": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "model.download_progress",
+          "default": "model.download_progress",
+          "title": "Type",
+          "type": "string"
+        },
+        "item": {
+          "title": "Item",
+          "type": "string"
+        },
+        "bytes_done": {
+          "title": "Bytes Done",
+          "type": "integer"
+        },
+        "bytes_total": {
+          "title": "Bytes Total",
+          "type": "integer"
+        },
+        "speed_bps": {
+          "default": 0,
+          "title": "Speed Bps",
+          "type": "number"
+        },
+        "overall_done": {
+          "default": 0,
+          "title": "Overall Done",
+          "type": "integer"
+        },
+        "overall_total": {
+          "default": 0,
+          "title": "Overall Total",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "item",
+        "bytes_done",
+        "bytes_total"
+      ],
+      "title": "ModelDownloadProgressMsg",
+      "type": "object"
+    },
+    "ModelItemInfo": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "bytes_total": {
+          "title": "Bytes Total",
+          "type": "integer"
+        },
+        "present": {
+          "title": "Present",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "name",
+        "bytes_total",
+        "present"
+      ],
+      "title": "ModelItemInfo",
+      "type": "object"
+    },
+    "ModelReadyMsg": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "model.ready",
+          "default": "model.ready",
+          "title": "Type",
+          "type": "string"
+        },
+        "tier": {
+          "title": "Tier",
+          "type": "string"
+        },
+        "chat_model": {
+          "title": "Chat Model",
+          "type": "string"
+        },
+        "tts_model": {
+          "title": "Tts Model",
+          "type": "string"
+        }
+      },
+      "required": [
+        "tier",
+        "chat_model",
+        "tts_model"
+      ],
+      "title": "ModelReadyMsg",
+      "type": "object"
+    },
+    "ModelsInfoMsg": {
+      "additionalProperties": false,
+      "description": "Hardware probe + tier choice + what still needs downloading. Sent at boot.",
+      "properties": {
+        "type": {
+          "const": "models.info",
+          "default": "models.info",
+          "title": "Type",
+          "type": "string"
+        },
+        "tier": {
+          "title": "Tier",
+          "type": "string"
+        },
+        "tier_reason": {
+          "title": "Tier Reason",
+          "type": "string"
+        },
+        "hardware": {
+          "additionalProperties": true,
+          "title": "Hardware",
+          "type": "object"
+        },
+        "required": {
+          "items": {
+            "$ref": "#/$defs/ModelItemInfo"
+          },
+          "title": "Required",
+          "type": "array"
+        }
+      },
+      "required": [
+        "tier",
+        "tier_reason",
+        "hardware",
+        "required"
+      ],
+      "title": "ModelsInfoMsg",
+      "type": "object"
+    },
+    "PersonaInfo": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "wake_phrase": {
+          "title": "Wake Phrase",
+          "type": "string"
+        },
+        "voice": {
+          "title": "Voice",
+          "type": "string"
+        },
+        "avatar_path": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Absolute path to the pack's VRM, or null for the built-in orb.",
+          "title": "Avatar Path"
+        },
+        "expressions": {
+          "additionalProperties": {
+            "$ref": "#/$defs/ExpressionSpec"
+          },
+          "description": "tag -> VRM expression mapping from the pack",
+          "title": "Expressions",
+          "type": "object"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "wake_phrase",
+        "voice"
+      ],
+      "title": "PersonaInfo",
+      "type": "object"
+    },
+    "PersonaSwitchMsg": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "persona.switch",
+          "default": "persona.switch",
+          "title": "Type",
+          "type": "string"
+        },
+        "persona_id": {
+          "title": "Persona Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "persona_id"
+      ],
+      "title": "PersonaSwitchMsg",
+      "type": "object"
+    },
+    "PttStartMsg": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "ptt.start",
+          "default": "ptt.start",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "title": "PttStartMsg",
+      "type": "object"
+    },
+    "PttStopMsg": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "ptt.stop",
+          "default": "ptt.stop",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "title": "PttStopMsg",
+      "type": "object"
+    },
+    "ReplyAudioMsg": {
+      "additionalProperties": false,
+      "description": "One synthesized sentence. PCM is 16-bit little-endian mono, base64.",
+      "properties": {
+        "type": {
+          "const": "reply.audio",
+          "default": "reply.audio",
+          "title": "Type",
+          "type": "string"
+        },
+        "turn_id": {
+          "title": "Turn Id",
+          "type": "string"
+        },
+        "sentence_id": {
+          "title": "Sentence Id",
+          "type": "integer"
+        },
+        "text": {
+          "title": "Text",
+          "type": "string"
+        },
+        "sample_rate": {
+          "title": "Sample Rate",
+          "type": "integer"
+        },
+        "pcm16_b64": {
+          "title": "Pcm16 B64",
+          "type": "string"
+        },
+        "duration_s": {
+          "title": "Duration S",
+          "type": "number"
+        },
+        "envelope_hz": {
+          "default": 50,
+          "description": "Rate of `envelope` frames",
+          "title": "Envelope Hz",
+          "type": "integer"
+        },
+        "envelope": {
+          "description": "RMS amplitude 0..1 per frame, for lip sync",
+          "items": {
+            "type": "number"
+          },
+          "title": "Envelope",
+          "type": "array"
+        },
+        "visemes": {
+          "description": "Coarse vowel hints spread over the sentence",
+          "items": {
+            "$ref": "#/$defs/VisemeHint"
+          },
+          "title": "Visemes",
+          "type": "array"
+        }
+      },
+      "required": [
+        "turn_id",
+        "sentence_id",
+        "text",
+        "sample_rate",
+        "pcm16_b64",
+        "duration_s"
+      ],
+      "title": "ReplyAudioMsg",
+      "type": "object"
+    },
+    "ReplyDoneMsg": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "reply.done",
+          "default": "reply.done",
+          "title": "Type",
+          "type": "string"
+        },
+        "turn_id": {
+          "title": "Turn Id",
+          "type": "string"
+        },
+        "text": {
+          "description": "Full reply text, tags stripped",
+          "title": "Text",
+          "type": "string"
+        },
+        "interrupted": {
+          "default": false,
+          "title": "Interrupted",
+          "type": "boolean"
+        },
+        "stats": {
+          "additionalProperties": {
+            "type": "number"
+          },
+          "description": "ttft_s, tokens, tok_s, first_audio_s ...",
+          "title": "Stats",
+          "type": "object"
+        }
+      },
+      "required": [
+        "turn_id",
+        "text"
+      ],
+      "title": "ReplyDoneMsg",
+      "type": "object"
+    },
+    "ReplyTokenMsg": {
+      "additionalProperties": false,
+      "description": "Streamed reply text with expression tags already stripped.",
+      "properties": {
+        "type": {
+          "const": "reply.token",
+          "default": "reply.token",
+          "title": "Type",
+          "type": "string"
+        },
+        "turn_id": {
+          "title": "Turn Id",
+          "type": "string"
+        },
+        "text": {
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "turn_id",
+        "text"
+      ],
+      "title": "ReplyTokenMsg",
+      "type": "object"
+    },
+    "SettingsUpdateMsg": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "settings.update",
+          "default": "settings.update",
+          "title": "Type",
+          "type": "string"
+        },
+        "settings": {
+          "additionalProperties": true,
+          "title": "Settings",
+          "type": "object"
+        }
+      },
+      "required": [
+        "settings"
+      ],
+      "title": "SettingsUpdateMsg",
+      "type": "object"
+    },
+    "StateMsg": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "state",
+          "default": "state",
+          "title": "Type",
+          "type": "string"
+        },
+        "state": {
+          "enum": [
+            "booting",
+            "downloading",
+            "idle",
+            "listening",
+            "thinking",
+            "speaking",
+            "executing",
+            "needs_confirm",
+            "error"
+          ],
+          "title": "State",
+          "type": "string"
+        },
+        "detail": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Detail"
+        }
+      },
+      "required": [
+        "state"
+      ],
+      "title": "StateMsg",
+      "type": "object"
+    },
+    "SummonMsg": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "summon",
+          "default": "summon",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "title": "SummonMsg",
+      "type": "object"
+    },
+    "TextSendMsg": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "text.send",
+          "default": "text.send",
+          "title": "Type",
+          "type": "string"
+        },
+        "text": {
+          "title": "Text",
+          "type": "string"
+        },
+        "speak": {
+          "default": true,
+          "title": "Speak",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "text"
+      ],
+      "title": "TextSendMsg",
+      "type": "object"
+    },
+    "ToolConfirmMsg": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "tool.confirm",
+          "default": "tool.confirm",
+          "title": "Type",
+          "type": "string"
+        },
+        "request_id": {
+          "title": "Request Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "request_id"
+      ],
+      "title": "ToolConfirmMsg",
+      "type": "object"
+    },
+    "ToolDenyMsg": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "tool.deny",
+          "default": "tool.deny",
+          "title": "Type",
+          "type": "string"
+        },
+        "request_id": {
+          "title": "Request Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "request_id"
+      ],
+      "title": "ToolDenyMsg",
+      "type": "object"
+    },
+    "ToolRequestConfirmMsg": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "tool.request_confirm",
+          "default": "tool.request_confirm",
+          "title": "Type",
+          "type": "string"
+        },
+        "request_id": {
+          "title": "Request Id",
+          "type": "string"
+        },
+        "tool": {
+          "title": "Tool",
+          "type": "string"
+        },
+        "args": {
+          "additionalProperties": true,
+          "title": "Args",
+          "type": "object"
+        },
+        "description": {
+          "title": "Description",
+          "type": "string"
+        },
+        "risk": {
+          "enum": [
+            "low",
+            "medium",
+            "high"
+          ],
+          "title": "Risk",
+          "type": "string"
+        }
+      },
+      "required": [
+        "request_id",
+        "tool",
+        "args",
+        "description",
+        "risk"
+      ],
+      "title": "ToolRequestConfirmMsg",
+      "type": "object"
+    },
+    "ToolResultMsg": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "tool.result",
+          "default": "tool.result",
+          "title": "Type",
+          "type": "string"
+        },
+        "request_id": {
+          "title": "Request Id",
+          "type": "string"
+        },
+        "tool": {
+          "title": "Tool",
+          "type": "string"
+        },
+        "ok": {
+          "title": "Ok",
+          "type": "boolean"
+        },
+        "summary": {
+          "title": "Summary",
+          "type": "string"
+        }
+      },
+      "required": [
+        "request_id",
+        "tool",
+        "ok",
+        "summary"
+      ],
+      "title": "ToolResultMsg",
+      "type": "object"
+    },
+    "TranscriptFinalMsg": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "transcript.final",
+          "default": "transcript.final",
+          "title": "Type",
+          "type": "string"
+        },
+        "text": {
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "text"
+      ],
+      "title": "TranscriptFinalMsg",
+      "type": "object"
+    },
+    "TranscriptPartialMsg": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "transcript.partial",
+          "default": "transcript.partial",
+          "title": "Type",
+          "type": "string"
+        },
+        "text": {
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "text"
+      ],
+      "title": "TranscriptPartialMsg",
+      "type": "object"
+    },
+    "VisemeHint": {
+      "additionalProperties": false,
+      "properties": {
+        "t": {
+          "description": "seconds from sentence start",
+          "title": "T",
+          "type": "number"
+        },
+        "shape": {
+          "enum": [
+            "aa",
+            "ih",
+            "ou",
+            "ee",
+            "oh",
+            "sil"
+          ],
+          "title": "Shape",
+          "type": "string"
+        }
+      },
+      "required": [
+        "t",
+        "shape"
+      ],
+      "title": "VisemeHint",
+      "type": "object"
+    }
+  },
+  "description": "Only used to emit one combined JSON schema with both directions.",
+  "properties": {
+    "brain": {
+      "discriminator": {
+        "mapping": {
+          "error": "#/$defs/ErrorMsg",
+          "expression": "#/$defs/ExpressionMsg",
+          "hello": "#/$defs/HelloMsg",
+          "model.download_progress": "#/$defs/ModelDownloadProgressMsg",
+          "model.ready": "#/$defs/ModelReadyMsg",
+          "models.info": "#/$defs/ModelsInfoMsg",
+          "reply.audio": "#/$defs/ReplyAudioMsg",
+          "reply.done": "#/$defs/ReplyDoneMsg",
+          "reply.token": "#/$defs/ReplyTokenMsg",
+          "state": "#/$defs/StateMsg",
+          "tool.request_confirm": "#/$defs/ToolRequestConfirmMsg",
+          "tool.result": "#/$defs/ToolResultMsg",
+          "transcript.final": "#/$defs/TranscriptFinalMsg",
+          "transcript.partial": "#/$defs/TranscriptPartialMsg"
+        },
+        "propertyName": "type"
+      },
+      "oneOf": [
+        {
+          "$ref": "#/$defs/HelloMsg"
+        },
+        {
+          "$ref": "#/$defs/StateMsg"
+        },
+        {
+          "$ref": "#/$defs/TranscriptPartialMsg"
+        },
+        {
+          "$ref": "#/$defs/TranscriptFinalMsg"
+        },
+        {
+          "$ref": "#/$defs/ReplyTokenMsg"
+        },
+        {
+          "$ref": "#/$defs/ReplyAudioMsg"
+        },
+        {
+          "$ref": "#/$defs/ReplyDoneMsg"
+        },
+        {
+          "$ref": "#/$defs/ExpressionMsg"
+        },
+        {
+          "$ref": "#/$defs/ToolRequestConfirmMsg"
+        },
+        {
+          "$ref": "#/$defs/ToolResultMsg"
+        },
+        {
+          "$ref": "#/$defs/ModelDownloadProgressMsg"
+        },
+        {
+          "$ref": "#/$defs/ModelReadyMsg"
+        },
+        {
+          "$ref": "#/$defs/ModelsInfoMsg"
+        },
+        {
+          "$ref": "#/$defs/ErrorMsg"
+        }
+      ],
+      "title": "Brain"
+    },
+    "shell": {
+      "discriminator": {
+        "mapping": {
+          "interrupt": "#/$defs/InterruptMsg",
+          "kill_switch": "#/$defs/KillSwitchMsg",
+          "models.download": "#/$defs/DownloadStartMsg",
+          "persona.switch": "#/$defs/PersonaSwitchMsg",
+          "ptt.start": "#/$defs/PttStartMsg",
+          "ptt.stop": "#/$defs/PttStopMsg",
+          "settings.update": "#/$defs/SettingsUpdateMsg",
+          "summon": "#/$defs/SummonMsg",
+          "text.send": "#/$defs/TextSendMsg",
+          "tool.confirm": "#/$defs/ToolConfirmMsg",
+          "tool.deny": "#/$defs/ToolDenyMsg"
+        },
+        "propertyName": "type"
+      },
+      "oneOf": [
+        {
+          "$ref": "#/$defs/SummonMsg"
+        },
+        {
+          "$ref": "#/$defs/PttStartMsg"
+        },
+        {
+          "$ref": "#/$defs/PttStopMsg"
+        },
+        {
+          "$ref": "#/$defs/TextSendMsg"
+        },
+        {
+          "$ref": "#/$defs/InterruptMsg"
+        },
+        {
+          "$ref": "#/$defs/ToolConfirmMsg"
+        },
+        {
+          "$ref": "#/$defs/ToolDenyMsg"
+        },
+        {
+          "$ref": "#/$defs/PersonaSwitchMsg"
+        },
+        {
+          "$ref": "#/$defs/SettingsUpdateMsg"
+        },
+        {
+          "$ref": "#/$defs/KillSwitchMsg"
+        },
+        {
+          "$ref": "#/$defs/DownloadStartMsg"
+        }
+      ],
+      "title": "Shell"
+    }
+  },
+  "required": [
+    "brain",
+    "shell"
+  ],
+  "title": "FamiliarProtocol",
+  "type": "object",
+  "$schema": "http://json-schema.org/draft-07/schema#"
+}

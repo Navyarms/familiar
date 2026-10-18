@@ -1,0 +1,10 @@
+{
+  "happy": { "vrm": "happy", "weight": 1.0, "decay_s": 3.0 },
+  "sad": { "vrm": "sad", "weight": 0.9, "decay_s": 3.0 },
+  "surprised": { "vrm": "surprised", "weight": 1.0, "decay_s": 2.0 },
+  "thinking": { "vrm": "relaxed", "weight": 0.5, "decay_s": 4.0 },
+  "smug": { "vrm": "happy", "weight": 0.5, "decay_s": 3.0 },
+  "wink": { "vrm": "blinkLeft", "weight": 1.0, "decay_s": 0.5 },
+  "angry": { "vrm": "angry", "weight": 0.7, "decay_s": 2.5 },
+  "neutral": { "vrm": "neutral", "weight": 1.0, "decay_s": 1.0 }
+}

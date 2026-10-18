@@ -1,0 +1,17 @@
+{
+  "small": {
+    "load_s": 8.46,
+    "first_run_s": 0.827,
+    "warm_median_s": 0.809,
+    "beam5_s": 0.829,
+    "transcript": "Hey Wisp, can you open my downloads folder and find the PDF I saved yesterday?"
+  },
+  "base": {
+    "load_s": 3.74,
+    "first_run_s": 0.282,
+    "warm_median_s": 0.278,
+    "beam5_s": 0.284,
+    "transcript": "Hey Whisp, can you open my downloads folder and find the PDF I saved yesterday?"
+  },
+  "reference": "Hey Wisp, can you open my downloads folder and find the PDF I saved yesterday afternoon?"
+}

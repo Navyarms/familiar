@@ -1,0 +1,26 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Familiar overlay spike</title>
+  <style>
+    html, body { margin: 0; padding: 0; background: transparent; overflow: hidden; width: 100%; height: 100%; }
+    canvas { display: block; }
+    #hud { position: fixed; left: 8px; top: 8px; font: 12px/1.4 Consolas, monospace; color: #0f0;
+           background: rgba(0,0,0,.55); padding: 4px 6px; border-radius: 4px; pointer-events: none; white-space: pre; }
+  </style>
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "./node_modules/three/build/three.module.js",
+      "three/addons/": "./node_modules/three/examples/jsm/",
+      "@pixiv/three-vrm": "./node_modules/@pixiv/three-vrm/lib/three-vrm.module.js"
+    }
+  }
+  </script>
+</head>
+<body>
+  <div id="hud">loading…</div>
+  <script type="module" src="renderer.js"></script>
+</body>
+</html>

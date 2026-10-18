@@ -1,0 +1,11 @@
+{
+  "label": "qwen3vl_desktop_1920x1080",
+  "image": "screen_1920.png",
+  "total_s": 26.10562089999985,
+  "prompt_tokens": 2074,
+  "pp_tok_s": 140.99574266278276,
+  "prompt_ms": 14709.664,
+  "gen_tokens": 197,
+  "tg_tok_s": 17.37856726126193,
+  "reply": "This screenshot from a cooperative action game shows a player character with white hair and a red coat standing on a wooden platform surrounded by stacked crates, with glowing green effects indicating an interactive or magical ability. The UI displays character portraits, health/mana bars, inventory slots, and a floating item value counter, suggesting a resource-heavy, team-based gameplay environment.\n\nClickable UI elements:\n1. Character portrait (top left, labeled \"3.2\") \u2014 likely a teammate or player avatar.\n2. Inventory slot (bottom left, labeled \"6\") \u2014 possibly for selecting or managing items.\n3. Skill icon (bottom center, labeled \"1\") \u2014 a circular icon with a skull, likely a special ability.\n4. Skill icon (bottom center, labeled \"2\") \u2014 a circular icon with a hand, possibly a combat or utility skill.\n5. Skill icon (bottom center, labeled \"4\") \u2014 a circular icon with a tombstone, likely a stealth or escape ability."
+}

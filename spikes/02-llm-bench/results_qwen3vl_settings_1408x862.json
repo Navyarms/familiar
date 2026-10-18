@@ -1,0 +1,11 @@
+{
+  "label": "qwen3vl_settings_1408x862",
+  "image": "../06-uia/settings_window.png",
+  "total_s": 26.532515499999135,
+  "prompt_tokens": 1219,
+  "pp_tok_s": 67.46108784684353,
+  "prompt_ms": 18069.676,
+  "gen_tokens": 158,
+  "tg_tok_s": 18.660146787608188,
+  "reply": "This screenshot shows the Windows Settings interface in dark mode, displaying the user\u2019s profile, system information, and quick-access recommendations like Display, Ethernet, and Sound. The right panel lists connected Bluetooth devices, including a Govee Table Lamp Speaker, while the left sidebar offers navigation to various system categories.\n\nClickable UI elements:\n1. \u201cDisplay\u201d \u2013 located in the \u201cRecommended settings\u201d section, near the top center.\n2. \u201cEthernet\u201d \u2013 also in \u201cRecommended settings,\u201d directly below \u201cDisplay.\u201d\n3. \u201cBluetooth\u201d toggle \u2013 in the \u201cBluetooth devices\u201d panel, near the top right.\n4. \u201cAdd device\u201d button \u2013 at the bottom right of the Bluetooth panel.\n5. \u201cView all devices\u201d link \u2013 directly below the listed devices in the Bluetooth panel."
+}

@@ -1,0 +1,53 @@
+{
+  "summary": {
+    "label": "qwen3-4b_8t_nothink",
+    "thinking": false,
+    "ttft_cold_prefix_median_s": 2.6829192000004696,
+    "ttft_cached_prefix_s": 0.16556490000039048,
+    "pp_tok_s_median": 349.9339180583924,
+    "tg_tok_s_median": 20.264313703423106,
+    "prompt_tokens": 932,
+    "tool_ok": 0,
+    "tool_total": 0,
+    "tool_latency_median_s": null
+  },
+  "speed": [
+    {
+      "cached_prefix": false,
+      "ttft_s": 2.581104700000651,
+      "total_s": 5.825628900000083,
+      "prompt_tokens": 932,
+      "pp_tok_s": 364.39971207730906,
+      "gen_tokens": 64,
+      "tg_tok_s": 19.418989984424737
+    },
+    {
+      "cached_prefix": false,
+      "ttft_s": 2.6829192000004696,
+      "total_s": 6.772485900000902,
+      "prompt_tokens": 932,
+      "pp_tok_s": 349.9339180583924,
+      "gen_tokens": 86,
+      "tg_tok_s": 20.785653692913733
+    },
+    {
+      "cached_prefix": false,
+      "ttft_s": 2.7151029000015114,
+      "total_s": 7.121794300001056,
+      "prompt_tokens": 932,
+      "pp_tok_s": 347.2584467263812,
+      "gen_tokens": 88,
+      "tg_tok_s": 19.74297371393248
+    },
+    {
+      "cached_prefix": true,
+      "ttft_s": 0.16556490000039048,
+      "total_s": 3.056853800000681,
+      "prompt_tokens": 23,
+      "pp_tok_s": 141.6770871190888,
+      "gen_tokens": 63,
+      "tg_tok_s": 21.444902166281004
+    }
+  ],
+  "tools": []
+}

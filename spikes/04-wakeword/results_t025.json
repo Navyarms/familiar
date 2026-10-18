@@ -1,0 +1,837 @@
+{
+  "threshold": 0.25,
+  "positives": {
+    "n": 72,
+    "detected": 62,
+    "rate": 0.8611111111111112,
+    "noisy_n": 4,
+    "noisy_detected": 2,
+    "detail": [
+      {
+        "voice": "af_heart",
+        "speed": 0.9,
+        "text": "Hey Wisp.",
+        "detected": true,
+        "dets": [
+          [
+            1.7,
+            "HeyWisp"
+          ]
+        ]
+      },
+      {
+        "voice": "af_heart",
+        "speed": 0.9,
+        "text": "Hey Wisp!",
+        "detected": true,
+        "dets": [
+          [
+            1.7,
+            "HeyWisp"
+          ]
+        ]
+      },
+      {
+        "voice": "af_heart",
+        "speed": 0.9,
+        "text": "hey wisp, what time is it?",
+        "detected": true,
+        "dets": [
+          [
+            1.7,
+            "HeyWisp"
+          ]
+        ]
+      },
+      {
+        "voice": "af_heart",
+        "speed": 1.0,
+        "text": "Hey Wisp.",
+        "detected": true,
+        "dets": [
+          [
+            1.7,
+            "HeyWisp"
+          ]
+        ]
+      },
+      {
+        "voice": "af_heart",
+        "speed": 1.0,
+        "text": "Hey Wisp!",
+        "detected": true,
+        "dets": [
+          [
+            1.7,
+            "HeyWisp"
+          ]
+        ]
+      },
+      {
+        "voice": "af_heart",
+        "speed": 1.0,
+        "text": "hey wisp, what time is it?",
+        "detected": true,
+        "dets": [
+          [
+            1.4,
+            "HeyWisp"
+          ]
+        ]
+      },
+      {
+        "voice": "af_heart",
+        "speed": 1.15,
+        "text": "Hey Wisp.",
+        "detected": true,
+        "dets": [
+          [
+            1.7,
+            "HeyWisp"
+          ]
+        ]
+      },
+      {
+        "voice": "af_heart",
+        "speed": 1.15,
+        "text": "Hey Wisp!",
+        "detected": false,
+        "dets": []
+      },
+      {
+        "voice": "af_heart",
+        "speed": 1.15,
+        "text": "hey wisp, what time is it?",
+        "detected": true,
+        "dets": [
+          [
+            1.4,
+            "HeyWisp"
+          ]
+        ]
+      },
+      {
+        "voice": "af_bella",
+        "speed": 0.9,
+        "text": "Hey Wisp.",
+        "detected": true,
+        "dets": [
+          [
+            1.7,
+            "HeyWisp"
+          ]
+        ]
+      },
+      {
+        "voice": "af_bella",
+        "speed": 0.9,
+        "text": "Hey Wisp!",
+        "detected": true,
+        "dets": [
+          [
+            1.7,
+            "HeyWisp"
+          ]
+        ]
+      },
+      {
+        "voice": "af_bella",
+        "speed": 0.9,
+        "text": "hey wisp, what time is it?",
+        "detected": true,
+        "dets": [
+          [
+            1.7,
+            "HeyWisp"
+          ]
+        ]
+      },
+      {
+        "voice": "af_bella",
+        "speed": 1.0,
+        "text": "Hey Wisp.",
+        "detected": true,
+        "dets": [
+          [
+            1.7,
+            "HeyWisp"
+          ]
+        ]
+      },
+      {
+        "voice": "af_bella",
+        "speed": 1.0,
+        "text": "Hey Wisp!",
+        "detected": true,
+        "dets": [
+          [
+            1.7,
+            "HeyWisp"
+          ]
+        ]
+      },
+      {
+        "voice": "af_bella",
+        "speed": 1.0,
+        "text": "hey wisp, what time is it?",
+        "detected": true,
+        "dets": [
+          [
+            1.4,
+            "HeyWisp"
+          ]
+        ]
+      },
+      {
+        "voice": "af_bella",
+        "speed": 1.15,
+        "text": "Hey Wisp.",
+        "detected": true,
+        "dets": [
+          [
+            1.4,
+            "HeyWisp"
+          ]
+        ]
+      },
+      {
+        "voice": "af_bella",
+        "speed": 1.15,
+        "text": "Hey Wisp!",
+        "detected": true,
+        "dets": [
+          [
+            1.4,
+            "HeyWisp"
+          ]
+        ]
+      },
+      {
+        "voice": "af_bella",
+        "speed": 1.15,
+        "text": "hey wisp, what time is it?",
+        "detected": true,
+        "dets": [
+          [
+            1.4,
+            "HeyWisp"
+          ]
+        ]
+      },
+      {
+        "voice": "am_adam",
+        "speed": 0.9,
+        "text": "Hey Wisp.",
+        "detected": true,
+        "dets": [
+          [
+            1.7,
+            "HeyWisp"
+          ]
+        ]
+      },
+      {
+        "voice": "am_adam",
+        "speed": 0.9,
+        "text": "Hey Wisp!",
+        "detected": true,
+        "dets": [
+          [
+            1.7,
+            "HeyWisp"
+          ]
+        ]
+      },
+      {
+        "voice": "am_adam",
+        "speed": 0.9,
+        "text": "hey wisp, what time is it?",
+        "detected": true,
+        "dets": [
+          [
+            1.4,
+            "HeyWisp"
+          ]
+        ]
+      },
+      {
+        "voice": "am_adam",
+        "speed": 1.0,
+        "text": "Hey Wisp.",
+        "detected": true,
+        "dets": [
+          [
+            1.7,
+            "HeyWisp"
+          ]
+        ]
+      },
+      {
+        "voice": "am_adam",
+        "speed": 1.0,
+        "text": "Hey Wisp!",
+        "detected": true,
+        "dets": [
+          [
+            1.7,
+            "HeyWisp"
+          ]
+        ]
+      },
+      {
+        "voice": "am_adam",
+        "speed": 1.0,
+        "text": "hey wisp, what time is it?",
+        "detected": true,
+        "dets": [
+          [
+            1.4,
+            "HeyWisp"
+          ]
+        ]
+      },
+      {
+        "voice": "am_adam",
+        "speed": 1.15,
+        "text": "Hey Wisp.",
+        "detected": true,
+        "dets": [
+          [
+            1.7,
+            "HeyWisp"
+          ]
+        ]
+      },
+      {
+        "voice": "am_adam",
+        "speed": 1.15,
+        "text": "Hey Wisp!",
+        "detected": true,
+        "dets": [
+          [
+            1.7,
+            "HeyWisp"
+          ]
+        ]
+      },
+      {
+        "voice": "am_adam",
+        "speed": 1.15,
+        "text": "hey wisp, what time is it?",
+        "detected": true,
+        "dets": [
+          [
+            1.4,
+            "HeyWisp"
+          ]
+        ]
+      },
+      {
+        "voice": "am_michael",
+        "speed": 0.9,
+        "text": "Hey Wisp.",
+        "detected": true,
+        "dets": [
+          [
+            1.7,
+            "HeyWisp"
+          ]
+        ]
+      },
+      {
+        "voice": "am_michael",
+        "speed": 0.9,
+        "text": "Hey Wisp!",
+        "detected": true,
+        "dets": [
+          [
+            1.7,
+            "HeyWisp"
+          ]
+        ]
+      },
+      {
+        "voice": "am_michael",
+        "speed": 0.9,
+        "text": "hey wisp, what time is it?",
+        "detected": true,
+        "dets": [
+          [
+            1.7,
+            "HeyWisp"
+          ]
+        ]
+      },
+      {
+        "voice": "am_michael",
+        "speed": 1.0,
+        "text": "Hey Wisp.",
+        "detected": true,
+        "dets": [
+          [
+            1.7,
+            "HeyWisp"
+          ]
+        ]
+      },
+      {
+        "voice": "am_michael",
+        "speed": 1.0,
+        "text": "Hey Wisp!",
+        "detected": false,
+        "dets": []
+      },
+      {
+        "voice": "am_michael",
+        "speed": 1.0,
+        "text": "hey wisp, what time is it?",
+        "detected": true,
+        "dets": [
+          [
+            1.7,
+            "HeyWisp"
+          ]
+        ]
+      },
+      {
+        "voice": "am_michael",
+        "speed": 1.15,
+        "text": "Hey Wisp.",
+        "detected": true,
+        "dets": [
+          [
+            1.7,
+            "HeyWisp"
+          ]
+        ]
+      },
+      {
+        "voice": "am_michael",
+        "speed": 1.15,
+        "text": "Hey Wisp!",
+        "detected": true,
+        "dets": [
+          [
+            1.7,
+            "HeyWisp"
+          ]
+        ]
+      },
+      {
+        "voice": "am_michael",
+        "speed": 1.15,
+        "text": "hey wisp, what time is it?",
+        "detected": true,
+        "dets": [
+          [
+            1.4,
+            "HeyWisp"
+          ]
+        ]
+      },
+      {
+        "voice": "bf_emma",
+        "speed": 0.9,
+        "text": "Hey Wisp.",
+        "detected": true,
+        "dets": [
+          [
+            1.7,
+            "HeyWisp"
+          ]
+        ]
+      },
+      {
+        "voice": "bf_emma",
+        "speed": 0.9,
+        "text": "Hey Wisp!",
+        "detected": true,
+        "dets": [
+          [
+            1.7,
+            "HeyWisp"
+          ]
+        ]
+      },
+      {
+        "voice": "bf_emma",
+        "speed": 0.9,
+        "text": "hey wisp, what time is it?",
+        "detected": true,
+        "dets": [
+          [
+            1.7,
+            "HeyWisp"
+          ]
+        ]
+      },
+      {
+        "voice": "bf_emma",
+        "speed": 1.0,
+        "text": "Hey Wisp.",
+        "detected": false,
+        "dets": []
+      },
+      {
+        "voice": "bf_emma",
+        "speed": 1.0,
+        "text": "Hey Wisp!",
+        "detected": false,
+        "dets": []
+      },
+      {
+        "voice": "bf_emma",
+        "speed": 1.0,
+        "text": "hey wisp, what time is it?",
+        "detected": true,
+        "dets": [
+          [
+            1.4,
+            "HeyWisp"
+          ]
+        ]
+      },
+      {
+        "voice": "bf_emma",
+        "speed": 1.15,
+        "text": "Hey Wisp.",
+        "detected": true,
+        "dets": [
+          [
+            1.7,
+            "HeyWisp"
+          ]
+        ]
+      },
+      {
+        "voice": "bf_emma",
+        "speed": 1.15,
+        "text": "Hey Wisp!",
+        "detected": true,
+        "dets": [
+          [
+            1.7,
+            "HeyWisp"
+          ]
+        ]
+      },
+      {
+        "voice": "bf_emma",
+        "speed": 1.15,
+        "text": "hey wisp, what time is it?",
+        "detected": true,
+        "dets": [
+          [
+            1.4,
+            "HeyWisp"
+          ]
+        ]
+      },
+      {
+        "voice": "bm_george",
+        "speed": 0.9,
+        "text": "Hey Wisp.",
+        "detected": false,
+        "dets": []
+      },
+      {
+        "voice": "bm_george",
+        "speed": 0.9,
+        "text": "Hey Wisp!",
+        "detected": true,
+        "dets": [
+          [
+            1.7,
+            "HeyWisp"
+          ]
+        ]
+      },
+      {
+        "voice": "bm_george",
+        "speed": 0.9,
+        "text": "hey wisp, what time is it?",
+        "detected": true,
+        "dets": [
+          [
+            1.7,
+            "HeyWisp"
+          ]
+        ]
+      },
+      {
+        "voice": "bm_george",
+        "speed": 1.0,
+        "text": "Hey Wisp.",
+        "detected": true,
+        "dets": [
+          [
+            1.7,
+            "HeyWisp"
+          ]
+        ]
+      },
+      {
+        "voice": "bm_george",
+        "speed": 1.0,
+        "text": "Hey Wisp!",
+        "detected": false,
+        "dets": []
+      },
+      {
+        "voice": "bm_george",
+        "speed": 1.0,
+        "text": "hey wisp, what time is it?",
+        "detected": true,
+        "dets": [
+          [
+            1.7,
+            "HeyWisp"
+          ]
+        ]
+      },
+      {
+        "voice": "bm_george",
+        "speed": 1.15,
+        "text": "Hey Wisp.",
+        "detected": false,
+        "dets": []
+      },
+      {
+        "voice": "bm_george",
+        "speed": 1.15,
+        "text": "Hey Wisp!",
+        "detected": false,
+        "dets": []
+      },
+      {
+        "voice": "bm_george",
+        "speed": 1.15,
+        "text": "hey wisp, what time is it?",
+        "detected": false,
+        "dets": []
+      },
+      {
+        "voice": "af_sky",
+        "speed": 0.9,
+        "text": "Hey Wisp.",
+        "detected": true,
+        "dets": [
+          [
+            1.7,
+            "HeyWisp"
+          ]
+        ]
+      },
+      {
+        "voice": "af_sky",
+        "speed": 0.9,
+        "text": "Hey Wisp!",
+        "detected": false,
+        "dets": []
+      },
+      {
+        "voice": "af_sky",
+        "speed": 0.9,
+        "text": "hey wisp, what time is it?",
+        "detected": true,
+        "dets": [
+          [
+            1.7,
+            "HeyWisp"
+          ]
+        ]
+      },
+      {
+        "voice": "af_sky",
+        "speed": 1.0,
+        "text": "Hey Wisp.",
+        "detected": true,
+        "dets": [
+          [
+            1.7,
+            "HeyWisp"
+          ]
+        ]
+      },
+      {
+        "voice": "af_sky",
+        "speed": 1.0,
+        "text": "Hey Wisp!",
+        "detected": true,
+        "dets": [
+          [
+            1.7,
+            "HeyWisp"
+          ]
+        ]
+      },
+      {
+        "voice": "af_sky",
+        "speed": 1.0,
+        "text": "hey wisp, what time is it?",
+        "detected": true,
+        "dets": [
+          [
+            1.7,
+            "HeyWisp"
+          ]
+        ]
+      },
+      {
+        "voice": "af_sky",
+        "speed": 1.15,
+        "text": "Hey Wisp.",
+        "detected": true,
+        "dets": [
+          [
+            1.7,
+            "HeyWisp"
+          ]
+        ]
+      },
+      {
+        "voice": "af_sky",
+        "speed": 1.15,
+        "text": "Hey Wisp!",
+        "detected": true,
+        "dets": [
+          [
+            1.7,
+            "HeyWisp"
+          ]
+        ]
+      },
+      {
+        "voice": "af_sky",
+        "speed": 1.15,
+        "text": "hey wisp, what time is it?",
+        "detected": true,
+        "dets": [
+          [
+            1.4,
+            "HeyWisp"
+          ]
+        ]
+      },
+      {
+        "voice": "am_fenrir",
+        "speed": 0.9,
+        "text": "Hey Wisp.",
+        "detected": true,
+        "dets": [
+          [
+            1.7,
+            "HeyWisp"
+          ]
+        ]
+      },
+      {
+        "voice": "am_fenrir",
+        "speed": 0.9,
+        "text": "Hey Wisp!",
+        "detected": true,
+        "dets": [
+          [
+            1.7,
+            "HeyWisp"
+          ]
+        ]
+      },
+      {
+        "voice": "am_fenrir",
+        "speed": 0.9,
+        "text": "hey wisp, what time is it?",
+        "detected": true,
+        "dets": [
+          [
+            1.4,
+            "HeyWisp"
+          ]
+        ]
+      },
+      {
+        "voice": "am_fenrir",
+        "speed": 1.0,
+        "text": "Hey Wisp.",
+        "detected": true,
+        "dets": [
+          [
+            1.4,
+            "HeyWisp"
+          ]
+        ]
+      },
+      {
+        "voice": "am_fenrir",
+        "speed": 1.0,
+        "text": "Hey Wisp!",
+        "detected": true,
+        "dets": [
+          [
+            1.4,
+            "HeyWisp"
+          ]
+        ]
+      },
+      {
+        "voice": "am_fenrir",
+        "speed": 1.0,
+        "text": "hey wisp, what time is it?",
+        "detected": true,
+        "dets": [
+          [
+            1.4,
+            "HeyWisp"
+          ]
+        ]
+      },
+      {
+        "voice": "am_fenrir",
+        "speed": 1.15,
+        "text": "Hey Wisp.",
+        "detected": true,
+        "dets": [
+          [
+            1.4,
+            "HeyWisp"
+          ]
+        ]
+      },
+      {
+        "voice": "am_fenrir",
+        "speed": 1.15,
+        "text": "Hey Wisp!",
+        "detected": true,
+        "dets": [
+          [
+            1.4,
+            "HeyWisp"
+          ]
+        ]
+      },
+      {
+        "voice": "am_fenrir",
+        "speed": 1.15,
+        "text": "hey wisp, what time is it?",
+        "detected": true,
+        "dets": [
+          [
+            1.4,
+            "HeyWisp"
+          ]
+        ]
+      }
+    ]
+  },
+  "rtf_median": 0.015303251358145746,
+  "false_accepts": {
+    "synthetic_speech_phrases": 19,
+    "synthetic_speech_secs": 57,
+    "fa_speech": 0,
+    "fa_speech_detail": [],
+    "noise_hours": 1.0,
+    "fa_noise": 0,
+    "real_secs": 0,
+    "fa_real": 0
+  }
+}

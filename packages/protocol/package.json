@@ -1,0 +1,14 @@
+{
+  "name": "@familiar/protocol",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Generated TypeScript types for the Shell <-> Brain protocol.",
+  "types": "./ts/index.d.ts",
+  "main": "./ts/index.js",
+  "scripts": {
+    "generate": "uv run --project ../../brain python -m familiar_protocol.generate && json2ts -i schema.json -o ts/index.d.ts --unreachableDefinitions && node -e \"require('fs').writeFileSync('ts/index.js','')\""
+  },
+  "devDependencies": {
+    "json-schema-to-typescript": "^15.0.0"
+  }
+}

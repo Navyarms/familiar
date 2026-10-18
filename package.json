@@ -1,0 +1,17 @@
+{
+  "name": "familiar",
+  "private": true,
+  "version": "0.1.0",
+  "description": "An always-on-top AI companion for Windows that runs entirely on your machine.",
+  "license": "MIT",
+  "workspaces": ["apps/shell", "packages/protocol"],
+  "scripts": {
+    "dev": "npm run dev -w apps/shell",
+    "build": "npm run build -w apps/shell",
+    "typecheck": "npm run typecheck -w apps/shell",
+    "protocol": "npm run generate -w packages/protocol",
+    "brain:dev": "uv run --project brain familiar-brain --dev",
+    "brain:test": "uv run --project brain pytest -q",
+    "brain:lint": "uv run --project brain ruff check ."
+  }
+}
