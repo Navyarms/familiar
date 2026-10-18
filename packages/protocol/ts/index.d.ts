@@ -23,6 +23,10 @@ export type Brain =
   | ModelsInfoMsg
   | MicStateMsg
   | MemoryItemsMsg
+  | PersonasItemsMsg
+  | VoicesItemsMsg
+  | DevicesItemsMsg
+  | SettingsItemsMsg
   | ErrorMsg;
 export type Type = "hello";
 export type Protocol = number;
@@ -145,7 +149,36 @@ export type Source = string;
 export type Score = number | null;
 export type Items = MemoryItem[];
 export type Query = string;
-export type Type17 = "error";
+export type Type17 = "personas.items";
+export type Id2 = string;
+export type Name3 = string;
+export type Path = string;
+export type WakePhrase1 = string;
+export type Voice1 = string;
+export type HasAvatar = boolean;
+/**
+ * Lives in the user's personas folder (editable) rather than bundled with the app
+ */
+export type UserPack = boolean;
+export type Active = boolean;
+export type Personas = PersonaSummary[];
+/**
+ * prompt.md of the requested persona, when asked for one
+ */
+export type Prompt = string | null;
+export type Expressions1 = {
+  [k: string]: unknown;
+} | null;
+export type Type18 = "voices.items";
+export type Voices = string[];
+export type Current = string;
+export type Type19 = "devices.items";
+export type Devices = {
+  [k: string]: unknown;
+}[];
+export type Current1 = number | string | null;
+export type Type20 = "settings.items";
+export type Type21 = "error";
 export type Code = string;
 export type Message = string;
 export type Fatal = boolean;
@@ -163,32 +196,69 @@ export type Shell =
   | PlaybackMsg
   | MemoryListMsg
   | MemoryDeleteMsg
+  | PersonasListMsg
+  | PersonaImportMsg
+  | PersonaDuplicateMsg
+  | PersonaUpdateMsg
+  | PersonaDeleteMsg
+  | VoicesListMsg
+  | VoicePreviewMsg
+  | DevicesListMsg
+  | SettingsGetMsg
   | DownloadStartMsg;
-export type Type18 = "summon";
-export type Type19 = "ptt.start";
-export type Type20 = "ptt.stop";
-export type Type21 = "text.send";
+export type Type22 = "summon";
+export type Type23 = "ptt.start";
+export type Type24 = "ptt.stop";
+export type Type25 = "text.send";
 export type Text6 = string;
 export type Speak = boolean;
-export type Type22 = "interrupt";
-export type Type23 = "tool.confirm";
+export type Type26 = "interrupt";
+export type Type27 = "tool.confirm";
 export type RequestId3 = string;
-export type Type24 = "tool.deny";
+export type Type28 = "tool.deny";
 export type RequestId4 = string;
-export type Type25 = "persona.switch";
+export type Type29 = "persona.switch";
 export type PersonaId = string;
-export type Type26 = "settings.update";
-export type Type27 = "kill_switch";
-export type Type28 = "playback";
+export type Type30 = "settings.update";
+export type Type31 = "kill_switch";
+export type Type32 = "playback";
 export type Speaking = boolean;
-export type Type29 = "memory.list";
+export type Type33 = "memory.list";
 export type Query1 = string;
 export type Limit = number;
-export type Type30 = "memory.delete";
+export type Type34 = "memory.delete";
 export type Kind1 = ("fact" | "episode") | null;
-export type Id2 = number | null;
+export type Id3 = number | null;
 export type All = boolean;
-export type Type31 = "models.download";
+export type Type35 = "personas.list";
+/**
+ * also return prompt + expressions for this persona
+ */
+export type DetailId = string | null;
+export type Type36 = "persona.import";
+export type Path1 = string;
+export type Type37 = "persona.duplicate";
+export type PersonaId1 = string;
+export type NewId = string;
+export type NewName = string;
+export type Type38 = "persona.update";
+export type PersonaId2 = string;
+export type Prompt1 = string | null;
+export type Voice2 = {
+  [k: string]: unknown;
+} | null;
+export type WakePhrase2 = string | null;
+export type Name4 = string | null;
+export type Type39 = "persona.delete";
+export type PersonaId3 = string;
+export type Type40 = "voices.list";
+export type Type41 = "voice.preview";
+export type Voice3 = string;
+export type Speed = number;
+export type Text7 = string | null;
+export type Type42 = "devices.list";
+export type Type43 = "settings.get";
+export type Type44 = "models.download";
 
 /**
  * Only used to emit one combined JSON schema with both directions.
@@ -478,10 +548,63 @@ export interface Counts {
 }
 /**
  * This interface was referenced by `FamiliarProtocol`'s JSON-Schema
+ * via the `definition` "PersonasItemsMsg".
+ */
+export interface PersonasItemsMsg {
+  type?: Type17;
+  personas: Personas;
+  prompt?: Prompt;
+  expressions?: Expressions1;
+}
+/**
+ * This interface was referenced by `FamiliarProtocol`'s JSON-Schema
+ * via the `definition` "PersonaSummary".
+ */
+export interface PersonaSummary {
+  id: Id2;
+  name: Name3;
+  path: Path;
+  wake_phrase: WakePhrase1;
+  voice: Voice1;
+  has_avatar: HasAvatar;
+  user_pack: UserPack;
+  active?: Active;
+}
+/**
+ * This interface was referenced by `FamiliarProtocol`'s JSON-Schema
+ * via the `definition` "VoicesItemsMsg".
+ */
+export interface VoicesItemsMsg {
+  type?: Type18;
+  voices: Voices;
+  current: Current;
+}
+/**
+ * This interface was referenced by `FamiliarProtocol`'s JSON-Schema
+ * via the `definition` "DevicesItemsMsg".
+ */
+export interface DevicesItemsMsg {
+  type?: Type19;
+  devices: Devices;
+  current?: Current1;
+}
+/**
+ * This interface was referenced by `FamiliarProtocol`'s JSON-Schema
+ * via the `definition` "SettingsItemsMsg".
+ */
+export interface SettingsItemsMsg {
+  type?: Type20;
+  settings: Settings;
+}
+export interface Settings {
+  [k: string]: unknown;
+}
+/**
+ * This interface was referenced by `FamiliarProtocol`'s JSON-Schema
  * via the `definition` "ErrorMsg".
  */
 export interface ErrorMsg {
-  type?: Type17;
+  type?: Type21;
   code: Code;
   message: Message;
   fatal?: Fatal;
@@ -491,28 +614,28 @@ export interface ErrorMsg {
  * via the `definition` "SummonMsg".
  */
 export interface SummonMsg {
-  type?: Type18;
+  type?: Type22;
 }
 /**
  * This interface was referenced by `FamiliarProtocol`'s JSON-Schema
  * via the `definition` "PttStartMsg".
  */
 export interface PttStartMsg {
-  type?: Type19;
+  type?: Type23;
 }
 /**
  * This interface was referenced by `FamiliarProtocol`'s JSON-Schema
  * via the `definition` "PttStopMsg".
  */
 export interface PttStopMsg {
-  type?: Type20;
+  type?: Type24;
 }
 /**
  * This interface was referenced by `FamiliarProtocol`'s JSON-Schema
  * via the `definition` "TextSendMsg".
  */
 export interface TextSendMsg {
-  type?: Type21;
+  type?: Type25;
   text: Text6;
   speak?: Speak;
 }
@@ -521,14 +644,14 @@ export interface TextSendMsg {
  * via the `definition` "InterruptMsg".
  */
 export interface InterruptMsg {
-  type?: Type22;
+  type?: Type26;
 }
 /**
  * This interface was referenced by `FamiliarProtocol`'s JSON-Schema
  * via the `definition` "ToolConfirmMsg".
  */
 export interface ToolConfirmMsg {
-  type?: Type23;
+  type?: Type27;
   request_id: RequestId3;
 }
 /**
@@ -536,7 +659,7 @@ export interface ToolConfirmMsg {
  * via the `definition` "ToolDenyMsg".
  */
 export interface ToolDenyMsg {
-  type?: Type24;
+  type?: Type28;
   request_id: RequestId4;
 }
 /**
@@ -544,7 +667,7 @@ export interface ToolDenyMsg {
  * via the `definition` "PersonaSwitchMsg".
  */
 export interface PersonaSwitchMsg {
-  type?: Type25;
+  type?: Type29;
   persona_id: PersonaId;
 }
 /**
@@ -552,10 +675,10 @@ export interface PersonaSwitchMsg {
  * via the `definition` "SettingsUpdateMsg".
  */
 export interface SettingsUpdateMsg {
-  type?: Type26;
-  settings: Settings;
+  type?: Type30;
+  settings: Settings1;
 }
-export interface Settings {
+export interface Settings1 {
   [k: string]: unknown;
 }
 /**
@@ -563,7 +686,7 @@ export interface Settings {
  * via the `definition` "KillSwitchMsg".
  */
 export interface KillSwitchMsg {
-  type?: Type27;
+  type?: Type31;
 }
 /**
  * Shell tells the brain whether reply audio is currently playing (for barge-in and the speaking state).
@@ -572,7 +695,7 @@ export interface KillSwitchMsg {
  * via the `definition` "PlaybackMsg".
  */
 export interface PlaybackMsg {
-  type?: Type28;
+  type?: Type32;
   speaking: Speaking;
 }
 /**
@@ -580,7 +703,7 @@ export interface PlaybackMsg {
  * via the `definition` "MemoryListMsg".
  */
 export interface MemoryListMsg {
-  type?: Type29;
+  type?: Type33;
   query?: Query1;
   limit?: Limit;
 }
@@ -591,10 +714,91 @@ export interface MemoryListMsg {
  * via the `definition` "MemoryDeleteMsg".
  */
 export interface MemoryDeleteMsg {
-  type?: Type30;
+  type?: Type34;
   kind?: Kind1;
-  id?: Id2;
+  id?: Id3;
   all?: All;
+}
+/**
+ * This interface was referenced by `FamiliarProtocol`'s JSON-Schema
+ * via the `definition` "PersonasListMsg".
+ */
+export interface PersonasListMsg {
+  type?: Type35;
+  detail_id?: DetailId;
+}
+/**
+ * Import a pack from a .zip or a folder into the user's personas directory.
+ *
+ * This interface was referenced by `FamiliarProtocol`'s JSON-Schema
+ * via the `definition` "PersonaImportMsg".
+ */
+export interface PersonaImportMsg {
+  type?: Type36;
+  path: Path1;
+}
+/**
+ * This interface was referenced by `FamiliarProtocol`'s JSON-Schema
+ * via the `definition` "PersonaDuplicateMsg".
+ */
+export interface PersonaDuplicateMsg {
+  type?: Type37;
+  persona_id: PersonaId1;
+  new_id: NewId;
+  new_name: NewName;
+}
+/**
+ * Edit a user pack: any of prompt (prompt.md), voice settings, wake phrase, name.
+ *
+ * This interface was referenced by `FamiliarProtocol`'s JSON-Schema
+ * via the `definition` "PersonaUpdateMsg".
+ */
+export interface PersonaUpdateMsg {
+  type?: Type38;
+  persona_id: PersonaId2;
+  prompt?: Prompt1;
+  voice?: Voice2;
+  wake_phrase?: WakePhrase2;
+  name?: Name4;
+}
+/**
+ * This interface was referenced by `FamiliarProtocol`'s JSON-Schema
+ * via the `definition` "PersonaDeleteMsg".
+ */
+export interface PersonaDeleteMsg {
+  type?: Type39;
+  persona_id: PersonaId3;
+}
+/**
+ * This interface was referenced by `FamiliarProtocol`'s JSON-Schema
+ * via the `definition` "VoicesListMsg".
+ */
+export interface VoicesListMsg {
+  type?: Type40;
+}
+/**
+ * This interface was referenced by `FamiliarProtocol`'s JSON-Schema
+ * via the `definition` "VoicePreviewMsg".
+ */
+export interface VoicePreviewMsg {
+  type?: Type41;
+  voice: Voice3;
+  speed?: Speed;
+  text?: Text7;
+}
+/**
+ * This interface was referenced by `FamiliarProtocol`'s JSON-Schema
+ * via the `definition` "DevicesListMsg".
+ */
+export interface DevicesListMsg {
+  type?: Type42;
+}
+/**
+ * This interface was referenced by `FamiliarProtocol`'s JSON-Schema
+ * via the `definition` "SettingsGetMsg".
+ */
+export interface SettingsGetMsg {
+  type?: Type43;
 }
 /**
  * Shell asks the brain to start (or resume) downloading what the tier needs.
@@ -603,5 +807,5 @@ export interface MemoryDeleteMsg {
  * via the `definition` "DownloadStartMsg".
  */
 export interface DownloadStartMsg {
-  type?: Type31;
+  type?: Type44;
 }

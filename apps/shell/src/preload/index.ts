@@ -26,6 +26,13 @@ const api = {
   },
   openSettings: () => ipcRenderer.send(IPC.openSettings),
   snapshot: (): Promise<ShellSnapshot> => ipcRenderer.invoke(IPC.getSnapshot),
+  shell: {
+    pickFile: (options: { title?: string; filters?: { name: string; extensions: string[] }[] }): Promise<string | null> => ipcRenderer.invoke(IPC.pickFile, options),
+    openPath: (which: 'home' | 'personas' | 'logs') => ipcRenderer.send(IPC.openPath, which),
+    setHotkey: (name: 'summon' | 'talk' | 'kill', accelerator: string): Promise<{ ok: boolean; error?: string }> => ipcRenderer.invoke(IPC.setHotkey, name, accelerator),
+    getStartup: (): Promise<boolean> => ipcRenderer.invoke(IPC.getStartup),
+    setStartup: (enabled: boolean): Promise<void> => ipcRenderer.invoke(IPC.setStartup, enabled),
+  },
 };
 
 contextBridge.exposeInMainWorld('familiar', api);

@@ -1,5 +1,57 @@
 {
   "$defs": {
+    "DevicesItemsMsg": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "devices.items",
+          "default": "devices.items",
+          "title": "Type",
+          "type": "string"
+        },
+        "devices": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Devices",
+          "type": "array"
+        },
+        "current": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Current"
+        }
+      },
+      "required": [
+        "devices"
+      ],
+      "title": "DevicesItemsMsg",
+      "type": "object"
+    },
+    "DevicesListMsg": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "devices.list",
+          "default": "devices.list",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "title": "DevicesListMsg",
+      "type": "object"
+    },
     "DownloadStartMsg": {
       "additionalProperties": false,
       "description": "Shell asks the brain to start (or resume) downloading what the tier needs.",
@@ -500,6 +552,77 @@
       "title": "ModelsInfoMsg",
       "type": "object"
     },
+    "PersonaDeleteMsg": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "persona.delete",
+          "default": "persona.delete",
+          "title": "Type",
+          "type": "string"
+        },
+        "persona_id": {
+          "title": "Persona Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "persona_id"
+      ],
+      "title": "PersonaDeleteMsg",
+      "type": "object"
+    },
+    "PersonaDuplicateMsg": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "persona.duplicate",
+          "default": "persona.duplicate",
+          "title": "Type",
+          "type": "string"
+        },
+        "persona_id": {
+          "title": "Persona Id",
+          "type": "string"
+        },
+        "new_id": {
+          "title": "New Id",
+          "type": "string"
+        },
+        "new_name": {
+          "title": "New Name",
+          "type": "string"
+        }
+      },
+      "required": [
+        "persona_id",
+        "new_id",
+        "new_name"
+      ],
+      "title": "PersonaDuplicateMsg",
+      "type": "object"
+    },
+    "PersonaImportMsg": {
+      "additionalProperties": false,
+      "description": "Import a pack from a .zip or a folder into the user's personas directory.",
+      "properties": {
+        "type": {
+          "const": "persona.import",
+          "default": "persona.import",
+          "title": "Type",
+          "type": "string"
+        },
+        "path": {
+          "title": "Path",
+          "type": "string"
+        }
+      },
+      "required": [
+        "path"
+      ],
+      "title": "PersonaImportMsg",
+      "type": "object"
+    },
     "PersonaInfo": {
       "additionalProperties": false,
       "properties": {
@@ -550,6 +673,56 @@
       "title": "PersonaInfo",
       "type": "object"
     },
+    "PersonaSummary": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "path": {
+          "title": "Path",
+          "type": "string"
+        },
+        "wake_phrase": {
+          "title": "Wake Phrase",
+          "type": "string"
+        },
+        "voice": {
+          "title": "Voice",
+          "type": "string"
+        },
+        "has_avatar": {
+          "title": "Has Avatar",
+          "type": "boolean"
+        },
+        "user_pack": {
+          "description": "Lives in the user's personas folder (editable) rather than bundled with the app",
+          "title": "User Pack",
+          "type": "boolean"
+        },
+        "active": {
+          "default": false,
+          "title": "Active",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "path",
+        "wake_phrase",
+        "voice",
+        "has_avatar",
+        "user_pack"
+      ],
+      "title": "PersonaSummary",
+      "type": "object"
+    },
     "PersonaSwitchMsg": {
       "additionalProperties": false,
       "properties": {
@@ -568,6 +741,151 @@
         "persona_id"
       ],
       "title": "PersonaSwitchMsg",
+      "type": "object"
+    },
+    "PersonaUpdateMsg": {
+      "additionalProperties": false,
+      "description": "Edit a user pack: any of prompt (prompt.md), voice settings, wake phrase, name.",
+      "properties": {
+        "type": {
+          "const": "persona.update",
+          "default": "persona.update",
+          "title": "Type",
+          "type": "string"
+        },
+        "persona_id": {
+          "title": "Persona Id",
+          "type": "string"
+        },
+        "prompt": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Prompt"
+        },
+        "voice": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Voice"
+        },
+        "wake_phrase": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Wake Phrase"
+        },
+        "name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Name"
+        }
+      },
+      "required": [
+        "persona_id"
+      ],
+      "title": "PersonaUpdateMsg",
+      "type": "object"
+    },
+    "PersonasItemsMsg": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "personas.items",
+          "default": "personas.items",
+          "title": "Type",
+          "type": "string"
+        },
+        "personas": {
+          "items": {
+            "$ref": "#/$defs/PersonaSummary"
+          },
+          "title": "Personas",
+          "type": "array"
+        },
+        "prompt": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "prompt.md of the requested persona, when asked for one",
+          "title": "Prompt"
+        },
+        "expressions": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Expressions"
+        }
+      },
+      "required": [
+        "personas"
+      ],
+      "title": "PersonasItemsMsg",
+      "type": "object"
+    },
+    "PersonasListMsg": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "personas.list",
+          "default": "personas.list",
+          "title": "Type",
+          "type": "string"
+        },
+        "detail_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "also return prompt + expressions for this persona",
+          "title": "Detail Id"
+        }
+      },
+      "title": "PersonasListMsg",
       "type": "object"
     },
     "PlaybackMsg": {
@@ -748,6 +1066,40 @@
         "text"
       ],
       "title": "ReplyTokenMsg",
+      "type": "object"
+    },
+    "SettingsGetMsg": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "settings.get",
+          "default": "settings.get",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "title": "SettingsGetMsg",
+      "type": "object"
+    },
+    "SettingsItemsMsg": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "settings.items",
+          "default": "settings.items",
+          "title": "Type",
+          "type": "string"
+        },
+        "settings": {
+          "additionalProperties": true,
+          "title": "Settings",
+          "type": "object"
+        }
+      },
+      "required": [
+        "settings"
+      ],
+      "title": "SettingsItemsMsg",
       "type": "object"
     },
     "SettingsUpdateMsg": {
@@ -1155,6 +1507,84 @@
       ],
       "title": "VisemeHint",
       "type": "object"
+    },
+    "VoicePreviewMsg": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "voice.preview",
+          "default": "voice.preview",
+          "title": "Type",
+          "type": "string"
+        },
+        "voice": {
+          "title": "Voice",
+          "type": "string"
+        },
+        "speed": {
+          "default": 1.0,
+          "title": "Speed",
+          "type": "number"
+        },
+        "text": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Text"
+        }
+      },
+      "required": [
+        "voice"
+      ],
+      "title": "VoicePreviewMsg",
+      "type": "object"
+    },
+    "VoicesItemsMsg": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "voices.items",
+          "default": "voices.items",
+          "title": "Type",
+          "type": "string"
+        },
+        "voices": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Voices",
+          "type": "array"
+        },
+        "current": {
+          "title": "Current",
+          "type": "string"
+        }
+      },
+      "required": [
+        "voices",
+        "current"
+      ],
+      "title": "VoicesItemsMsg",
+      "type": "object"
+    },
+    "VoicesListMsg": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "voices.list",
+          "default": "voices.list",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "title": "VoicesListMsg",
+      "type": "object"
     }
   },
   "description": "Only used to emit one combined JSON schema with both directions.",
@@ -1162,6 +1592,7 @@
     "brain": {
       "discriminator": {
         "mapping": {
+          "devices.items": "#/$defs/DevicesItemsMsg",
           "error": "#/$defs/ErrorMsg",
           "expression": "#/$defs/ExpressionMsg",
           "hello": "#/$defs/HelloMsg",
@@ -1170,16 +1601,19 @@
           "model.download_progress": "#/$defs/ModelDownloadProgressMsg",
           "model.ready": "#/$defs/ModelReadyMsg",
           "models.info": "#/$defs/ModelsInfoMsg",
+          "personas.items": "#/$defs/PersonasItemsMsg",
           "reply.audio": "#/$defs/ReplyAudioMsg",
           "reply.done": "#/$defs/ReplyDoneMsg",
           "reply.token": "#/$defs/ReplyTokenMsg",
+          "settings.items": "#/$defs/SettingsItemsMsg",
           "state": "#/$defs/StateMsg",
           "tool.request_confirm": "#/$defs/ToolRequestConfirmMsg",
           "tool.result": "#/$defs/ToolResultMsg",
           "tool.start": "#/$defs/ToolStartMsg",
           "tools.info": "#/$defs/ToolsInfoMsg",
           "transcript.final": "#/$defs/TranscriptFinalMsg",
-          "transcript.partial": "#/$defs/TranscriptPartialMsg"
+          "transcript.partial": "#/$defs/TranscriptPartialMsg",
+          "voices.items": "#/$defs/VoicesItemsMsg"
         },
         "propertyName": "type"
       },
@@ -1236,6 +1670,18 @@
           "$ref": "#/$defs/MemoryItemsMsg"
         },
         {
+          "$ref": "#/$defs/PersonasItemsMsg"
+        },
+        {
+          "$ref": "#/$defs/VoicesItemsMsg"
+        },
+        {
+          "$ref": "#/$defs/DevicesItemsMsg"
+        },
+        {
+          "$ref": "#/$defs/SettingsItemsMsg"
+        },
+        {
           "$ref": "#/$defs/ErrorMsg"
         }
       ],
@@ -1244,20 +1690,29 @@
     "shell": {
       "discriminator": {
         "mapping": {
+          "devices.list": "#/$defs/DevicesListMsg",
           "interrupt": "#/$defs/InterruptMsg",
           "kill_switch": "#/$defs/KillSwitchMsg",
           "memory.delete": "#/$defs/MemoryDeleteMsg",
           "memory.list": "#/$defs/MemoryListMsg",
           "models.download": "#/$defs/DownloadStartMsg",
+          "persona.delete": "#/$defs/PersonaDeleteMsg",
+          "persona.duplicate": "#/$defs/PersonaDuplicateMsg",
+          "persona.import": "#/$defs/PersonaImportMsg",
           "persona.switch": "#/$defs/PersonaSwitchMsg",
+          "persona.update": "#/$defs/PersonaUpdateMsg",
+          "personas.list": "#/$defs/PersonasListMsg",
           "playback": "#/$defs/PlaybackMsg",
           "ptt.start": "#/$defs/PttStartMsg",
           "ptt.stop": "#/$defs/PttStopMsg",
+          "settings.get": "#/$defs/SettingsGetMsg",
           "settings.update": "#/$defs/SettingsUpdateMsg",
           "summon": "#/$defs/SummonMsg",
           "text.send": "#/$defs/TextSendMsg",
           "tool.confirm": "#/$defs/ToolConfirmMsg",
-          "tool.deny": "#/$defs/ToolDenyMsg"
+          "tool.deny": "#/$defs/ToolDenyMsg",
+          "voice.preview": "#/$defs/VoicePreviewMsg",
+          "voices.list": "#/$defs/VoicesListMsg"
         },
         "propertyName": "type"
       },
@@ -1300,6 +1755,33 @@
         },
         {
           "$ref": "#/$defs/MemoryDeleteMsg"
+        },
+        {
+          "$ref": "#/$defs/PersonasListMsg"
+        },
+        {
+          "$ref": "#/$defs/PersonaImportMsg"
+        },
+        {
+          "$ref": "#/$defs/PersonaDuplicateMsg"
+        },
+        {
+          "$ref": "#/$defs/PersonaUpdateMsg"
+        },
+        {
+          "$ref": "#/$defs/PersonaDeleteMsg"
+        },
+        {
+          "$ref": "#/$defs/VoicesListMsg"
+        },
+        {
+          "$ref": "#/$defs/VoicePreviewMsg"
+        },
+        {
+          "$ref": "#/$defs/DevicesListMsg"
+        },
+        {
+          "$ref": "#/$defs/SettingsGetMsg"
         },
         {
           "$ref": "#/$defs/DownloadStartMsg"

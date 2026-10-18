@@ -203,6 +203,41 @@ class MemoryItemsMsg(_Msg):
     query: str = ""
 
 
+class PersonaSummary(_Msg):
+    id: str
+    name: str
+    path: str
+    wake_phrase: str
+    voice: str
+    has_avatar: bool
+    user_pack: bool = Field(description="Lives in the user's personas folder (editable) rather than bundled with the app")
+    active: bool = False
+
+
+class PersonasItemsMsg(_Msg):
+    type: Literal["personas.items"] = "personas.items"
+    personas: list[PersonaSummary]
+    prompt: str | None = Field(None, description="prompt.md of the requested persona, when asked for one")
+    expressions: dict | None = None
+
+
+class VoicesItemsMsg(_Msg):
+    type: Literal["voices.items"] = "voices.items"
+    voices: list[str]
+    current: str
+
+
+class DevicesItemsMsg(_Msg):
+    type: Literal["devices.items"] = "devices.items"
+    devices: list[dict]
+    current: int | str | None = None
+
+
+class SettingsItemsMsg(_Msg):
+    type: Literal["settings.items"] = "settings.items"
+    settings: dict
+
+
 class ErrorMsg(_Msg):
     type: Literal["error"] = "error"
     code: str
@@ -274,6 +309,60 @@ class MemoryDeleteMsg(_Msg):
     all: bool = False
 
 
+class PersonasListMsg(_Msg):
+    type: Literal["personas.list"] = "personas.list"
+    detail_id: str | None = Field(None, description="also return prompt + expressions for this persona")
+
+
+class PersonaImportMsg(_Msg):
+    """Import a pack from a .zip or a folder into the user's personas directory."""
+
+    type: Literal["persona.import"] = "persona.import"
+    path: str
+
+
+class PersonaDuplicateMsg(_Msg):
+    type: Literal["persona.duplicate"] = "persona.duplicate"
+    persona_id: str
+    new_id: str
+    new_name: str
+
+
+class PersonaUpdateMsg(_Msg):
+    """Edit a user pack: any of prompt (prompt.md), voice settings, wake phrase, name."""
+
+    type: Literal["persona.update"] = "persona.update"
+    persona_id: str
+    prompt: str | None = None
+    voice: dict | None = None
+    wake_phrase: str | None = None
+    name: str | None = None
+
+
+class PersonaDeleteMsg(_Msg):
+    type: Literal["persona.delete"] = "persona.delete"
+    persona_id: str
+
+
+class VoicesListMsg(_Msg):
+    type: Literal["voices.list"] = "voices.list"
+
+
+class VoicePreviewMsg(_Msg):
+    type: Literal["voice.preview"] = "voice.preview"
+    voice: str
+    speed: float = 1.0
+    text: str | None = None
+
+
+class DevicesListMsg(_Msg):
+    type: Literal["devices.list"] = "devices.list"
+
+
+class SettingsGetMsg(_Msg):
+    type: Literal["settings.get"] = "settings.get"
+
+
 class PlaybackMsg(_Msg):
     """Shell tells the brain whether reply audio is currently playing (for barge-in and the speaking state)."""
 
@@ -305,6 +394,10 @@ BrainMessage = Annotated[
     | ModelsInfoMsg
     | MicStateMsg
     | MemoryItemsMsg
+    | PersonasItemsMsg
+    | VoicesItemsMsg
+    | DevicesItemsMsg
+    | SettingsItemsMsg
     | ErrorMsg,
     Field(discriminator="type"),
 ]
@@ -323,6 +416,15 @@ ShellMessage = Annotated[
     | PlaybackMsg
     | MemoryListMsg
     | MemoryDeleteMsg
+    | PersonasListMsg
+    | PersonaImportMsg
+    | PersonaDuplicateMsg
+    | PersonaUpdateMsg
+    | PersonaDeleteMsg
+    | VoicesListMsg
+    | VoicePreviewMsg
+    | DevicesListMsg
+    | SettingsGetMsg
     | DownloadStartMsg,
     Field(discriminator="type"),
 ]

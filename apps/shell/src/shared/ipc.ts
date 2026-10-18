@@ -9,6 +9,11 @@ export const IPC = {
   panelHide: 'panel:hide',
   openSettings: 'settings:open',
   getSnapshot: 'shell:snapshot', // invoke -> ShellSnapshot
+  pickFile: 'shell:pickFile', // invoke(options) -> path | null
+  openPath: 'shell:openPath', // (which: 'home'|'personas'|'logs')
+  setHotkey: 'shell:setHotkey', // invoke(name, accelerator) -> {ok, error?}
+  getStartup: 'shell:getStartup', // invoke -> boolean
+  setStartup: 'shell:setStartup', // invoke(boolean)
   // main -> renderer
   brainMessage: 'brain:message', // any BrainMessage (JSON)
   brainStatus: 'brain:status', // BrainStatus

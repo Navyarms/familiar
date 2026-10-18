@@ -29,15 +29,22 @@ async def main() -> None:
     ap.add_argument("--no-speak", action="store_true")
     ap.add_argument("--timeout", type=float, default=300)
     ap.add_argument("--wait", type=float, default=1.0, help="seconds to wait after boot before the first prompt (lets idle memory work run)")
+    ap.add_argument("--exe", default=None, help="run this frozen familiar-brain.exe instead of the source package")
     a = ap.parse_args()
     token = "devtoken"
-    proc = subprocess.Popen([sys.executable, "-m", "familiar_brain", "--token", token, "--dev", "--no-stdin-watch"],
-                            cwd=HERE, stdout=subprocess.PIPE, stderr=open(HERE / "ws_client-brain.log", "w"), text=True, bufsize=1)
+    cmd = [a.exe, "--token", token, "--dev", "--no-stdin-watch"] if a.exe else [sys.executable, "-m", "familiar_brain", "--token", token, "--dev", "--no-stdin-watch"]
+    proc = subprocess.Popen(cmd, cwd=(Path(a.exe).parent if a.exe else HERE), stdout=subprocess.PIPE,
+                            stderr=open(HERE / "ws_client-brain.log", "w"), text=True, bufsize=1)
     port = None
     for line in proc.stdout:
         if line.startswith("READY "):
             port = int(line.split()[1])
             break
+    if port is None:
+        proc.wait(timeout=5)
+        print("brain exited before READY (code", proc.returncode, "); last stderr lines:")
+        print("".join(open(HERE / "ws_client-brain.log", encoding="utf-8", errors="replace").readlines()[-12:]))
+        return
     print("brain on port", port)
     pcm = bytearray()
     sr = 24000

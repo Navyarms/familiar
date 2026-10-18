@@ -22,6 +22,7 @@ from .llm import LlamaServer, LlmClient, default_threads
 from .memory import Embedder, MemoryStore, extract_and_summarize
 from .models import ModelManager
 from .persona import Persona, list_personas, load_persona
+from .persona import manage as personas
 from .tools import REGISTRY, ToolContext
 from .tts import KokoroTTS
 
@@ -176,6 +177,33 @@ class Brain:
         if res.get("new_facts") or res.get("episode_id"):
             await self.send(self.memory_items())
         return res
+
+    def personas_items(self, detail_id: str | None) -> dict:
+        prompt = expr = None
+        if detail_id:
+            prompt, expr = personas.detail(self.paths, detail_id)
+        return {"type": "personas.items", "personas": personas.summaries(self.paths, self.persona.id if self.persona else None),
+                "prompt": prompt, "expressions": expr}
+
+    def settings_items(self) -> dict:
+        from dataclasses import asdict
+
+        return {"type": "settings.items", "settings": asdict(self.settings)}
+
+    async def preview_voice(self, voice: str, speed: float, text: str | None) -> None:
+        if not self.tts:
+            await self.send({"type": "error", "code": "tts", "message": "voice engine not loaded", "fatal": False})
+            return
+        name = self.persona.name if self.persona else "Wisp"
+        text = text or f"Hi, I'm {name}. This is what I sound like."
+        try:
+            syn = await self.tts.synth(text, voice, speed)
+        except Exception as e:
+            await self.send({"type": "error", "code": "tts", "message": f"preview failed: {e}", "fatal": False})
+            return
+        await self.send({"type": "reply.audio", "turn_id": f"preview-{voice}", "sentence_id": 1, "text": text, "sample_rate": syn.sample_rate,
+                         "pcm16_b64": syn.pcm16_b64(), "duration_s": round(syn.duration_s, 3), "envelope_hz": 50,
+                         "envelope": syn.envelope, "visemes": syn.visemes})
 
     def memory_items(self, query: str = "", limit: int = 100) -> dict:
         return {"type": "memory.items", "items": self.memory.list_items(query, limit), "counts": self.memory.counts(), "query": query}
@@ -444,6 +472,46 @@ class Brain:
             self.resolve_confirm(msg.request_id, True)
         elif t == "tool.deny":
             self.resolve_confirm(msg.request_id, False)
+        elif t == "personas.list":
+            await self.send(self.personas_items(msg.detail_id))
+        elif t == "persona.import":
+            try:
+                pid = personas.import_pack(self.paths, msg.path)
+                await self.send(self.personas_items(pid))
+            except Exception as e:
+                await self.send({"type": "error", "code": "persona", "message": f"import failed: {e}", "fatal": False})
+        elif t == "persona.duplicate":
+            try:
+                pid = personas.duplicate(self.paths, msg.persona_id, msg.new_id, msg.new_name)
+                await self.send(self.personas_items(pid))
+            except Exception as e:
+                await self.send({"type": "error", "code": "persona", "message": str(e), "fatal": False})
+        elif t == "persona.update":
+            try:
+                personas.update(self.paths, msg.persona_id, prompt=msg.prompt, voice=msg.voice, wake_phrase=msg.wake_phrase, name=msg.name)
+                if self.persona and msg.persona_id == self.persona.id:
+                    await self.switch_persona(msg.persona_id)  # reload prompt/voice/wake phrase
+                await self.send(self.personas_items(msg.persona_id))
+            except Exception as e:
+                await self.send({"type": "error", "code": "persona", "message": str(e), "fatal": False})
+        elif t == "persona.delete":
+            try:
+                if self.persona and msg.persona_id == self.persona.id:
+                    raise ValueError("switch to another persona first")
+                personas.delete(self.paths, msg.persona_id)
+                await self.send(self.personas_items(None))
+            except Exception as e:
+                await self.send({"type": "error", "code": "persona", "message": str(e), "fatal": False})
+        elif t == "voices.list":
+            await self.send({"type": "voices.items", "voices": self.tts.voices() if self.tts else [], "current": self.persona.voice if self.persona else ""})
+        elif t == "voice.preview":
+            await self.preview_voice(msg.voice, msg.speed, msg.text)
+        elif t == "devices.list":
+            from .audio import list_input_devices
+
+            await self.send({"type": "devices.items", "devices": list_input_devices(), "current": self.settings.mic_device})
+        elif t == "settings.get":
+            await self.send(self.settings_items())
         elif t == "memory.list":
             await self.send(self.memory_items(msg.query, msg.limit))
         elif t == "memory.delete":
@@ -459,6 +527,9 @@ class Brain:
         elif t == "settings.update":
             self.settings.update(msg.settings)
             self.settings.save(self.paths.settings_file)
+            await self.send(self.settings_items())
+            if "persona_id" in msg.settings and self.persona and msg.settings["persona_id"] != self.persona.id:
+                await self.switch_persona(msg.settings["persona_id"])
             if any(k in msg.settings for k in ("tool_permissions", "web_enabled", "file_roots")):
                 self.registry.configure(self.settings)
                 await self.send(self.tools_info())

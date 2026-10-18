@@ -22,9 +22,21 @@ def repo_root() -> Path | None:
 
 
 def bundle_root() -> Path:
-    """Where bundled resources live: next to the frozen exe, or the repo root in dev."""
+    """Where bundled resources (personas/, runtimes/) live.
+
+    Packaged: the exe is <app>/resources/brain/familiar-brain.exe and electron-builder puts personas at
+    <app>/resources/personas, so the bundle root is the exe folder's parent. Dev: the repo root.
+    FAMILIAR_BUNDLE overrides (used when testing the frozen exe from brain/dist).
+    """
+    env = os.environ.get("FAMILIAR_BUNDLE")
+    if env:
+        return Path(env)
     if getattr(sys, "frozen", False):
-        return Path(sys.executable).resolve().parent
+        exe_dir = Path(sys.executable).resolve().parent
+        for cand in (exe_dir.parent, exe_dir):
+            if (cand / "personas").is_dir():
+                return cand
+        return exe_dir.parent
     return repo_root() or Path.cwd()
 
 

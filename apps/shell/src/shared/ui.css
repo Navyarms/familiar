@@ -70,6 +70,11 @@ code { font-family: Consolas, monospace; font-size: 12px; background: var(--bg-3
 /* settings */
 .settings { padding: 22px 26px; max-width: 760px; }
 .settings h1 { font-size: 20px; margin: 0 0 14px; }
+.tabs { display: flex; gap: 4px; margin: 4px 0 10px; border-bottom: 1px solid #262a38; }
+.tabs button { background: transparent; border: none; border-bottom: 2px solid transparent; border-radius: 0; padding: 8px 12px; color: var(--fg-dim); }
+.tabs button.active { color: var(--fg); border-bottom-color: var(--accent); }
+.settings textarea { width: 100%; }
+.settings dl.kv dd.row { gap: 8px; }
 .settings h2 { font-size: 14px; margin: 22px 0 8px; color: var(--fg-dim); text-transform: uppercase; letter-spacing: .06em; }
 .card { background: var(--bg-2); border: 1px solid #262a38; border-radius: var(--radius); padding: 14px 16px; }
 .kv { display: grid; grid-template-columns: 180px 1fr; gap: 6px 12px; }

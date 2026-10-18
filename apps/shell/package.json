@@ -2,17 +2,20 @@
   "name": "@familiar/shell",
   "private": true,
   "version": "0.1.0",
-  "description": "Familiar desktop shell: overlay avatar, chat panel, settings, brain supervisor.",
+  "description": "An always-on-top AI companion for Windows that runs entirely on your machine.",
   "main": "./out/main/index.js",
   "license": "MIT",
   "scripts": {
     "dev": "electron-vite dev",
     "build": "electron-vite build",
     "preview": "electron-vite preview",
-    "typecheck": "tsc --noEmit -p tsconfig.json"
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "dist": "electron-vite build && electron-builder --win --publish never",
+    "dist:dir": "electron-vite build && electron-builder --win --dir --publish never"
   },
   "dependencies": {
     "@pixiv/three-vrm": "^3.5.5",
+    "electron-updater": "^6.8.9",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "three": "^0.186.1"
@@ -24,8 +27,70 @@
     "@types/three": "^0.186.0",
     "@vitejs/plugin-react": "^5.0.0",
     "electron": "^44.9.0",
+    "electron-builder": "^26.15.3",
     "electron-vite": "^4.0.0",
     "typescript": "^5.6.0",
     "vite": "^7.0.0"
+  },
+  "productName": "Familiar",
+  "author": "Familiar contributors",
+  "homepage": "https://github.com/OWNER/familiar",
+  "build": {
+    "appId": "dev.familiar.app",
+    "productName": "Familiar",
+    "artifactName": "Familiar-Setup-${version}.${ext}",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "out/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "../../brain/dist/familiar-brain",
+        "to": "brain",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
+        "from": "../../personas",
+        "to": "personas",
+        "filter": [
+          "**/*",
+          "!**/*.vrm"
+        ]
+      }
+    ],
+    "asar": true,
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.ico",
+      "signAndEditExecutable": false
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "runAfterFinish": true,
+      "artifactName": "Familiar-Setup-${version}.${ext}"
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "OWNER",
+        "repo": "familiar"
+      }
+    ]
   }
 }

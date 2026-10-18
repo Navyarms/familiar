@@ -1,12 +1,33 @@
-import { app, BrowserWindow, globalShortcut, ipcMain, Menu, nativeImage, net, protocol, Tray } from 'electron';
+import { app, BrowserWindow, dialog, globalShortcut, ipcMain, Menu, nativeImage, net, protocol, shell, Tray } from 'electron';
 import { join } from 'path';
 import { pathToFileURL } from 'url';
-import { existsSync } from 'fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
 import { BrainSupervisor } from './brain';
 import { createOverlay, createPanel, createSettings } from './windows';
+import { setupUpdater } from './updater';
 import { IPC, type ShellSnapshot } from '../shared/ipc';
 
-const HOTKEYS = { summon: 'CommandOrControl+Shift+Space', talk: 'CommandOrControl+Shift+M', kill: 'CommandOrControl+Alt+Escape' };
+const DEFAULT_HOTKEYS = { summon: 'CommandOrControl+Shift+Space', talk: 'CommandOrControl+Shift+M', kill: 'CommandOrControl+Alt+Escape' };
+const DATA_HOME = join(process.env['LOCALAPPDATA'] ?? app.getPath('userData'), 'Familiar');
+const SHELL_SETTINGS = join(DATA_HOME, 'shell.json');
+function loadShellSettings(): { hotkeys: typeof DEFAULT_HOTKEYS } {
+  try {
+    const j = JSON.parse(readFileSync(SHELL_SETTINGS, 'utf-8'));
+    return { hotkeys: { ...DEFAULT_HOTKEYS, ...(j.hotkeys ?? {}) } };
+  } catch {
+    return { hotkeys: { ...DEFAULT_HOTKEYS } };
+  }
+}
+function saveShellSettings(s: { hotkeys: typeof DEFAULT_HOTKEYS }): void {
+  try {
+    mkdirSync(DATA_HOME, { recursive: true });
+    writeFileSync(SHELL_SETTINGS, JSON.stringify(s, null, 2));
+  } catch (e) {
+    console.error('could not save shell settings', e);
+  }
+}
+const shellSettings = loadShellSettings();
+const HOTKEYS = shellSettings.hotkeys;
 let micMode: string = 'off'; // mirrors the brain's mic.state so the talk hotkey can toggle
 const isDev = !app.isPackaged;
 
@@ -82,6 +103,7 @@ app.whenReady().then(() => {
   overlay = createOverlay();
   panel = createPanel(overlay);
 
+  const updates = setupUpdater((s) => console.log('[updater]', s));
   tray = new Tray(trayIcon());
   tray.setToolTip('Familiar');
   tray.setContextMenu(Menu.buildFromTemplate([
@@ -91,14 +113,45 @@ app.whenReady().then(() => {
     { type: 'separator' },
     { label: 'Stop speaking', click: () => brain.send({ type: 'interrupt' }) },
     { label: 'Restart brain', click: () => { brain.stop(); setTimeout(() => brain.start(), 500); } },
+    { label: 'Check for updates…', click: async () => { const r = await updates.check(); tray?.displayBalloon?.({ title: 'Familiar', content: r }); } },
     { type: 'separator' },
     { label: 'Quit Familiar', click: () => app.quit() },
   ]));
   tray.on('click', togglePanel);
 
-  globalShortcut.register(HOTKEYS.summon, togglePanel);
-  globalShortcut.register(HOTKEYS.talk, toggleTalk);
-  globalShortcut.register(HOTKEYS.kill, () => brain.send({ type: 'kill_switch' }));
+  const actions = { summon: togglePanel, talk: toggleTalk, kill: () => brain.send({ type: 'kill_switch' }) } as const;
+  const registerHotkeys = () => {
+    globalShortcut.unregisterAll();
+    for (const k of Object.keys(actions) as (keyof typeof actions)[]) {
+      if (!globalShortcut.register(HOTKEYS[k], actions[k])) console.warn(`hotkey ${k} (${HOTKEYS[k]}) could not be registered`);
+    }
+  };
+  registerHotkeys();
+  ipcMain.handle(IPC.setHotkey, (_e, name: keyof typeof actions, accel: string) => {
+    if (!(name in actions)) return { ok: false, error: 'unknown hotkey' };
+    const old = HOTKEYS[name];
+    globalShortcut.unregister(old);
+    try {
+      if (!globalShortcut.register(accel, actions[name])) throw new Error('that combination is taken or invalid');
+    } catch (e) {
+      globalShortcut.register(old, actions[name]);
+      return { ok: false, error: String((e as Error).message ?? e) };
+    }
+    HOTKEYS[name] = accel;
+    saveShellSettings(shellSettings);
+    return { ok: true };
+  });
+  ipcMain.handle(IPC.getStartup, () => app.getLoginItemSettings().openAtLogin);
+  ipcMain.handle(IPC.setStartup, (_e, enabled: boolean) => app.setLoginItemSettings({ openAtLogin: enabled, args: ['--hidden'] }));
+  ipcMain.handle(IPC.pickFile, async (_e, options: { title?: string; filters?: Electron.FileFilter[] }) => {
+    const r = await dialog.showOpenDialog({ title: options?.title, filters: options?.filters, properties: ['openFile'] });
+    return r.canceled ? null : r.filePaths[0];
+  });
+  ipcMain.on(IPC.openPath, (_e, which: 'home' | 'personas' | 'logs') => {
+    const p = which === 'home' ? DATA_HOME : join(DATA_HOME, which);
+    mkdirSync(p, { recursive: true });
+    void shell.openPath(p);
+  });
 
   // --- IPC ---------------------------------------------------------------------
   ipcMain.on(IPC.brainSend, (_e, msg) => brain.send(msg));
@@ -135,7 +188,7 @@ app.whenReady().then(() => {
   });
 
   brain.start();
-  if (isDev) setTimeout(showPanel, 1500);
+  if (isDev && !process.argv.includes('--hidden')) setTimeout(showPanel, 1500);
 });
 
 app.on('will-quit', () => {

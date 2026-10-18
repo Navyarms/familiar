@@ -26,3 +26,5 @@ apps/shell/out/
 brain/dist/
 brain/build/
 brain/.venv/
+apps/shell/release/
+apps/shell/build/icon.png
