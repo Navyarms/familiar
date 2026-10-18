@@ -14,6 +14,11 @@ dependencies = [
   "numpy>=1.26",
   "psutil>=5.9",
   "familiar-protocol",
+  "sherpa-onnx>=1.13.8",
+  "faster-whisper>=1.2.1",
+  "sounddevice>=0.5.6",
+  "sentencepiece>=0.2.2",
+  "sherpa-onnx-core>=1.13.8",
 ]
 
 [project.scripts]

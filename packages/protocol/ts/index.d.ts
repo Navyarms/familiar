@@ -19,6 +19,7 @@ export type Brain =
   | ModelDownloadProgressMsg
   | ModelReadyMsg
   | ModelsInfoMsg
+  | MicStateMsg
   | ErrorMsg;
 export type Type = "hello";
 export type Protocol = number;
@@ -113,7 +114,14 @@ export type Name1 = string;
 export type BytesTotal1 = number;
 export type Present = boolean;
 export type Required = ModelItemInfo[];
-export type Type13 = "error";
+export type Type13 = "mic.state";
+export type Mode = "off" | "idle" | "wake" | "listening" | "processing";
+export type Level = number;
+/**
+ * wake | ptt | voice | no speech | nothing heard | cancelled
+ */
+export type Reason = string;
+export type Type14 = "error";
 export type Code = string;
 export type Message = string;
 export type Fatal = boolean;
@@ -128,23 +136,26 @@ export type Shell =
   | PersonaSwitchMsg
   | SettingsUpdateMsg
   | KillSwitchMsg
+  | PlaybackMsg
   | DownloadStartMsg;
-export type Type14 = "summon";
-export type Type15 = "ptt.start";
-export type Type16 = "ptt.stop";
-export type Type17 = "text.send";
+export type Type15 = "summon";
+export type Type16 = "ptt.start";
+export type Type17 = "ptt.stop";
+export type Type18 = "text.send";
 export type Text5 = string;
 export type Speak = boolean;
-export type Type18 = "interrupt";
-export type Type19 = "tool.confirm";
+export type Type19 = "interrupt";
+export type Type20 = "tool.confirm";
 export type RequestId2 = string;
-export type Type20 = "tool.deny";
+export type Type21 = "tool.deny";
 export type RequestId3 = string;
-export type Type21 = "persona.switch";
+export type Type22 = "persona.switch";
 export type PersonaId = string;
-export type Type22 = "settings.update";
-export type Type23 = "kill_switch";
-export type Type24 = "models.download";
+export type Type23 = "settings.update";
+export type Type24 = "kill_switch";
+export type Type25 = "playback";
+export type Speaking = boolean;
+export type Type26 = "models.download";
 
 /**
  * Only used to emit one combined JSON schema with both directions.
@@ -356,11 +367,23 @@ export interface ModelItemInfo {
   present: Present;
 }
 /**
+ * Voice pipeline mode for the avatar's mic indicator. `level` is 0..1 while listening.
+ *
+ * This interface was referenced by `FamiliarProtocol`'s JSON-Schema
+ * via the `definition` "MicStateMsg".
+ */
+export interface MicStateMsg {
+  type?: Type13;
+  mode: Mode;
+  level?: Level;
+  reason?: Reason;
+}
+/**
  * This interface was referenced by `FamiliarProtocol`'s JSON-Schema
  * via the `definition` "ErrorMsg".
  */
 export interface ErrorMsg {
-  type?: Type13;
+  type?: Type14;
   code: Code;
   message: Message;
   fatal?: Fatal;
@@ -370,28 +393,28 @@ export interface ErrorMsg {
  * via the `definition` "SummonMsg".
  */
 export interface SummonMsg {
-  type?: Type14;
+  type?: Type15;
 }
 /**
  * This interface was referenced by `FamiliarProtocol`'s JSON-Schema
  * via the `definition` "PttStartMsg".
  */
 export interface PttStartMsg {
-  type?: Type15;
+  type?: Type16;
 }
 /**
  * This interface was referenced by `FamiliarProtocol`'s JSON-Schema
  * via the `definition` "PttStopMsg".
  */
 export interface PttStopMsg {
-  type?: Type16;
+  type?: Type17;
 }
 /**
  * This interface was referenced by `FamiliarProtocol`'s JSON-Schema
  * via the `definition` "TextSendMsg".
  */
 export interface TextSendMsg {
-  type?: Type17;
+  type?: Type18;
   text: Text5;
   speak?: Speak;
 }
@@ -400,14 +423,14 @@ export interface TextSendMsg {
  * via the `definition` "InterruptMsg".
  */
 export interface InterruptMsg {
-  type?: Type18;
+  type?: Type19;
 }
 /**
  * This interface was referenced by `FamiliarProtocol`'s JSON-Schema
  * via the `definition` "ToolConfirmMsg".
  */
 export interface ToolConfirmMsg {
-  type?: Type19;
+  type?: Type20;
   request_id: RequestId2;
 }
 /**
@@ -415,7 +438,7 @@ export interface ToolConfirmMsg {
  * via the `definition` "ToolDenyMsg".
  */
 export interface ToolDenyMsg {
-  type?: Type20;
+  type?: Type21;
   request_id: RequestId3;
 }
 /**
@@ -423,7 +446,7 @@ export interface ToolDenyMsg {
  * via the `definition` "PersonaSwitchMsg".
  */
 export interface PersonaSwitchMsg {
-  type?: Type21;
+  type?: Type22;
   persona_id: PersonaId;
 }
 /**
@@ -431,7 +454,7 @@ export interface PersonaSwitchMsg {
  * via the `definition` "SettingsUpdateMsg".
  */
 export interface SettingsUpdateMsg {
-  type?: Type22;
+  type?: Type23;
   settings: Settings;
 }
 export interface Settings {
@@ -442,7 +465,17 @@ export interface Settings {
  * via the `definition` "KillSwitchMsg".
  */
 export interface KillSwitchMsg {
-  type?: Type23;
+  type?: Type24;
+}
+/**
+ * Shell tells the brain whether reply audio is currently playing (for barge-in and the speaking state).
+ *
+ * This interface was referenced by `FamiliarProtocol`'s JSON-Schema
+ * via the `definition` "PlaybackMsg".
+ */
+export interface PlaybackMsg {
+  type?: Type25;
+  speaking: Speaking;
 }
 /**
  * Shell asks the brain to start (or resume) downloading what the tier needs.
@@ -451,5 +484,5 @@ export interface KillSwitchMsg {
  * via the `definition` "DownloadStartMsg".
  */
 export interface DownloadStartMsg {
-  type?: Type24;
+  type?: Type26;
 }

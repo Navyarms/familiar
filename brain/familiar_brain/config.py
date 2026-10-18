@@ -77,6 +77,14 @@ class Settings:
     llm_ctx: int = 4096
     thinking: bool = False
     tts_speed: float | None = None
+    # voice in
+    voice_enabled: bool = True
+    mic_device: int | str | None = None  # sounddevice index or name substring; None = default
+    wake_word: bool = True
+    barge_in_vad: bool = False  # interrupt on any speech while speaking (headset users)
+    vad_threshold: float = 0.5
+    kws_threshold: float = 0.25
+    stt_threads: int | None = None  # None = min(8, physical cores / 2)
     extra: dict = field(default_factory=dict)
 
     @staticmethod

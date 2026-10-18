@@ -34,6 +34,7 @@ def main(argv: list[str] | None = None) -> None:
     ap.add_argument("--home", default=None, help="data dir (default %%LOCALAPPDATA%%\\Familiar)")
     ap.add_argument("--dev", action="store_true", help="verbose logging to stderr")
     ap.add_argument("--no-stdin-watch", action="store_true")
+    ap.add_argument("--mic-file", default=None, help="dev: feed this wav as the microphone instead of a real device")
     a = ap.parse_args(argv)
     if not a.token:
         print("refusing to start without --token (or FAMILIAR_TOKEN)", file=sys.stderr)
@@ -50,6 +51,10 @@ def main(argv: list[str] | None = None) -> None:
 
     settings = Settings.load(paths.settings_file)
     brain = Brain(paths, settings)
+    brain.mic_file = a.mic_file or os.environ.get("FAMILIAR_MIC_FILE") or None
+    if os.environ.get("FAMILIAR_MIC_DEVICE"):  # dev: pick the capture device without editing settings.json
+        dev = os.environ["FAMILIAR_MIC_DEVICE"]
+        settings.mic_device = int(dev) if dev.isdigit() else dev
     port = a.port
     if port == 0:
         s = socket.socket()

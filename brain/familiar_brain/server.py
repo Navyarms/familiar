@@ -11,6 +11,11 @@ from familiar_protocol import parse_shell_message
 from fastapi import FastAPI, Query, WebSocket, WebSocketDisconnect
 
 from .agent.turn import Turn, build_system_prompt
+from .audio import FileSource, MicSource
+from .audio.pipeline import PipelineConfig, VoicePipeline
+from .audio.stt import WhisperSTT, default_stt_threads
+from .audio.vad import SileroVAD
+from .audio.wakeword import WakeWord
 from .config import BRAIN_VERSION, Paths, Settings
 from .llm import LlamaServer, LlmClient, default_threads
 from .models import ModelManager
@@ -35,9 +40,13 @@ class Brain:
         self.boot_task: asyncio.Task | None = None
         self.download_task: asyncio.Task | None = None
         self.ready = False
+        self.voice: VoicePipeline | None = None
+        self.mic_file: str | None = None  # dev: feed a wav instead of the microphone
 
     # ------------------------------------------------------------ messaging
     async def send(self, msg: dict) -> None:
+        if msg.get("type") == "mic.state":
+            await self._on_mic_mode(msg["mode"])
         dead = []
         data = json.dumps(msg)
         for ws in list(self.sockets):
@@ -50,7 +59,15 @@ class Brain:
 
     async def set_state(self, state: str, detail: str | None = None) -> None:
         self.state = state
+        if self.voice:
+            self.voice.busy = state in ("thinking", "speaking", "executing")
         await self.send({"type": "state", "state": state, "detail": detail})
+
+    async def _on_mic_mode(self, mode: str) -> None:
+        if mode == "listening" and self.state == "idle":
+            await self.set_state("listening")
+        elif mode in ("wake", "idle", "off") and self.state == "listening":
+            await self.set_state("idle")
 
     def hello(self) -> dict:
         return {"type": "hello", "protocol": 1, "brain_version": BRAIN_VERSION,
@@ -135,8 +152,55 @@ class Brain:
         await self.send({"type": "model.ready", "tier": self.models.tier, "chat_model": self.models.chat_model_path().name,
                          "tts_model": "kokoro-v1.0" if self.tts else "none"})
         await self.set_state("idle")
+        if self.settings.voice_enabled:
+            await self.start_voice()
+
+    async def start_voice(self) -> None:
+        """Mic -> VAD/wake word -> STT. Failures here are not fatal: text chat keeps working."""
+        await self.stop_voice()
+        try:
+            await self.set_state("booting", "loading speech recognition")
+            loop = asyncio.get_running_loop()
+            source = FileSource(loop, self.mic_file, realtime=True) if self.mic_file else MicSource(loop, self.settings.mic_device)
+            vad = SileroVAD(self.models.vad_path(), threshold=self.settings.vad_threshold)
+            kws = None
+            if self.settings.wake_word:
+                try:
+                    kws = WakeWord(self.models.kws_dir(), [self.persona.wake_phrase], threshold=self.settings.kws_threshold)
+                except Exception as e:
+                    log.warning("wake word unavailable: %s", e)
+                    await self.send({"type": "error", "code": "wakeword", "message": f"wake word unavailable: {e}", "fatal": False})
+            stt = WhisperSTT(self.models.stt_dir(), threads=self.settings.stt_threads or default_stt_threads())
+            await stt.load()
+            cfg = PipelineConfig(wake_phrases=[self.persona.wake_phrase], wake_enabled=self.settings.wake_word,
+                                 barge_in_vad=self.settings.barge_in_vad)
+            self.voice = VoicePipeline(source=source, vad=vad, kws=kws, stt=stt, send=self.send,
+                                       on_utterance=self._on_utterance, on_barge_in=self._on_barge_in, config=cfg)
+            await self.voice.start()
+            log.info("voice pipeline started on %s (wake=%s, barge_in_vad=%s)", source.describe(), bool(kws), cfg.barge_in_vad)
+        except Exception as e:
+            log.exception("voice pipeline failed")
+            self.voice = None
+            await self.send({"type": "error", "code": "voice", "message": f"microphone unavailable: {e}", "fatal": False})
+        finally:
+            if self.state == "booting":
+                await self.set_state("idle")
+
+    async def stop_voice(self) -> None:
+        if self.voice:
+            v, self.voice = self.voice, None
+            await v.stop()
+
+    async def _on_utterance(self, text: str, reason: str) -> None:
+        await self.handle_text(text, speak=True)
+
+    async def _on_barge_in(self) -> None:
+        log.info("barge-in: interrupting current turn")
+        await self.interrupt()
+        await self.set_state("idle")
 
     async def shutdown(self) -> None:
+        await self.stop_voice()
         await self.interrupt()
         if self.llm:
             await self.llm.aclose()
@@ -212,9 +276,28 @@ class Brain:
         elif t == "settings.update":
             self.settings.update(msg.settings)
             self.settings.save(self.paths.settings_file)
+            voice_keys = ("voice_enabled", "mic_device", "wake_word", "barge_in_vad", "vad_threshold", "kws_threshold")
+            if self.ready and any(k in msg.settings for k in voice_keys):
+                if self.settings.voice_enabled:
+                    await self.start_voice()
+                else:
+                    await self.stop_voice()
         elif t == "summon":
             await self.send({"type": "state", "state": self.state})
-        else:  # ptt.* and tool.* arrive in later phases
+        elif t == "ptt.start":
+            if self.voice:
+                await self.voice.ptt_start()
+            else:
+                await self.send({"type": "error", "code": "voice", "message": "voice input is not running", "fatal": False})
+        elif t == "ptt.stop":
+            if self.voice:
+                await self.voice.ptt_stop()
+        elif t == "playback":
+            if self.voice:
+                self.voice.set_speaking(msg.speaking)
+            if not msg.speaking and self.state == "speaking":
+                await self.set_state("idle")
+        else:  # tool.* arrive in later phases
             log.info("ignoring %s (not implemented in this phase)", t)
 
 

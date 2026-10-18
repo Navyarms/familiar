@@ -46,7 +46,7 @@ export function App() {
           <dt>State</dt><dd>{state?.state ?? '…'}{state?.detail ? ` — ${state.detail}` : ''}</dd>
           <dt>Persona</dt><dd>{hello?.persona ? `${hello.persona.name} · wake phrase “${hello.persona.wake_phrase}” · voice ${hello.persona.voice}` : '…'}</dd>
           <dt>Avatar</dt><dd>{hello?.persona?.avatar_path ? <code>{hello.persona.avatar_path}</code> : 'built-in orb (drop an avatar.vrm into the persona folder)'}</dd>
-          <dt>Hotkeys</dt><dd>summon <code>{snap?.hotkeys.summon}</code> · kill switch <code>{snap?.hotkeys.kill}</code></dd>
+          <dt>Hotkeys</dt><dd>chat <code>{snap?.hotkeys.summon}</code> · talk <code>{snap?.hotkeys.talk}</code> · kill switch <code>{snap?.hotkeys.kill}</code></dd>
         </dl>
       </div>
 
@@ -98,7 +98,8 @@ export function App() {
       <h2>About</h2>
       <div className="card muted">
         Familiar {snap?.version} · everything runs on this PC, nothing leaves it. Persona packs live in <code>%LOCALAPPDATA%\Familiar\personas</code>.
-        Edit <code>%LOCALAPPDATA%\Familiar\settings.json</code> for tier override, custom GGUF, threads (UI for these comes in Phase 6).
+        Edit <code>%LOCALAPPDATA%\Familiar\settings.json</code> for tier override, custom GGUF, threads, <code>mic_device</code>, <code>wake_word</code>,
+        <code>barge_in_vad</code> (interrupt on any speech; for headsets) (UI for these comes in Phase 6).
       </div>
     </div>
   );

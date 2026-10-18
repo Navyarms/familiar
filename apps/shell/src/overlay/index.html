@@ -10,10 +10,19 @@
                color: #dfe7ff; background: rgba(20, 22, 30, .72); padding: 3px 10px; border-radius: 999px;
                pointer-events: none; opacity: 0; transition: opacity .25s; white-space: nowrap; }
       #badge.show { opacity: 1; }
+      /* mic indicator: a ring that breathes while listening for the wake word and fills with level while capturing */
+      #mic { position: fixed; right: 14px; bottom: 14px; width: 30px; height: 30px; border-radius: 50%; pointer-events: none;
+             display: grid; place-items: center; opacity: 0; transition: opacity .25s, background .2s, box-shadow .1s;
+             background: rgba(20, 22, 30, .75); color: #dfe7ff; font: 13px system-ui; }
+      #mic.wake { opacity: .55; animation: breathe 3s ease-in-out infinite; }
+      #mic.listening { opacity: 1; background: rgba(60, 200, 130, .85); color: #06251a; }
+      #mic.processing { opacity: 1; background: rgba(255, 210, 125, .9); color: #2b1d00; }
+      @keyframes breathe { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.08); } }
     </style>
   </head>
   <body>
     <div id="badge"></div>
+    <div id="mic" title="microphone">🎤</div>
     <script type="module" src="./main.ts"></script>
   </body>
 </html>

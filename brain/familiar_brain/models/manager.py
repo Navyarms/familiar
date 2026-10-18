@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import logging
+import tarfile
 import time
 import zipfile
 from collections.abc import Awaitable, Callable
@@ -35,7 +36,14 @@ class ModelManager:
 
     # ---------------------------------------------------------------- locations
     def _dest(self, item: Item) -> Path:
-        return (self.paths.runtimes if item.kind == "runtime" else self.paths.models) / item.name
+        base = self.paths.runtimes if item.kind == "runtime" else self.paths.models
+        return base / item.subdir / item.name if item.subdir else base / item.name
+
+    def _unpacked_dir(self, item: Item) -> Path:
+        """Where an archive item's contents live after unpacking."""
+        if item.kind == "runtime":
+            return self.paths.runtimes / item.name.removesuffix(".zip")
+        return self.paths.models / (item.subdir or item.name.split(".")[0])
 
     def runtime_dir(self) -> Path:
         return self.paths.runtimes / TIER_MODELS[self.tier]["runtime"].name.removesuffix(".zip")
@@ -71,6 +79,19 @@ class ModelManager:
 
         return self._dest(KOKORO), self._dest(KOKORO_VOICES)
 
+    def vad_path(self) -> Path:
+        from .manifest import SILERO_VAD
+
+        return self._dest(SILERO_VAD)
+
+    def kws_dir(self) -> Path:
+        from .manifest import KWS_EN
+
+        return self._unpacked_dir(KWS_EN)
+
+    def stt_dir(self) -> Path:
+        return self._dest(TIER_MODELS[self.tier]["stt"][0]).parent
+
     # ---------------------------------------------------------------- status
     def required(self) -> list[Item]:
         items = items_for_tier(self.tier)
@@ -83,6 +104,8 @@ class ModelManager:
     def is_present(self, item: Item) -> bool:
         if item.kind == "runtime":
             return (self.runtime_dir() / "llama-server.exe").exists()
+        if item.archive:
+            return (self._unpacked_dir(item) / "tokens.txt").exists()
         p = self._dest(item)
         return p.exists() and (item.sha256 is None or p.stat().st_size == item.size)
 
@@ -101,8 +124,8 @@ class ModelManager:
             for item in missing:
                 done = await self._download(client, item, progress, overall_done, overall_total)
                 overall_done += done
-                if item.kind == "runtime":
-                    await asyncio.to_thread(self._unpack_runtime, item)
+                if item.archive:
+                    await asyncio.to_thread(self._unpack, item)
 
     async def _download(self, client: httpx.AsyncClient, item: Item, progress: ProgressCb, overall_done: int, overall_total: int) -> int:
         dest = self._dest(item)
@@ -150,20 +173,27 @@ class ModelManager:
         await progress(item.name, total, total, 0, overall_done + total, overall_total)
         return total
 
-    def _unpack_runtime(self, item: Item) -> None:
-        zpath = self._dest(item)
-        out = self.runtime_dir()
+    def _unpack(self, item: Item) -> None:
+        apath = self._dest(item)
+        out = self._unpacked_dir(item)
         out.mkdir(parents=True, exist_ok=True)
-        with zipfile.ZipFile(zpath) as z:
-            z.extractall(out)
-        # some builds nest everything one folder deep
-        if not (out / "llama-server.exe").exists():
+        if apath.name.endswith(".zip"):
+            with zipfile.ZipFile(apath) as z:
+                z.extractall(out)
+        else:
+            with tarfile.open(apath, "r:bz2") as t:
+                t.extractall(out, filter="data")
+        # archives often nest everything one folder deep: flatten
+        marker = "llama-server.exe" if item.kind == "runtime" else "tokens.txt"
+        if not (out / marker).exists():
             for sub in out.iterdir():
-                if (sub / "llama-server.exe").exists():
+                if sub.is_dir() and (sub / marker).exists():
                     for f in sub.iterdir():
                         f.replace(out / f.name)
+                    sub.rmdir()
                     break
-        log.info("unpacked runtime to %s", out)
+        apath.unlink(missing_ok=True)
+        log.info("unpacked %s to %s", item.name, out)
 
     def adopt_local_file(self, item_name: str, src: Path) -> bool:
         """Dev helper: copy a verified local file into the store instead of downloading (used by tests/dev)."""

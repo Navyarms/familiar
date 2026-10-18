@@ -5,7 +5,7 @@ answer questions or operate your PC, and hear it reply through a locally rendere
 Everything runs on-device. The app ships as a single installer anyone can use, and the character,
 voice, and personality live in swappable **persona packs**.
 
-> Status: Phase 0 spikes complete (2026-10-18), results in [docs/phase0-results.md](docs/phase0-results.md). Phase 1 core loop works from source, see [docs/phase1-core-loop.md](docs/phase1-core-loop.md). Next: Phase 2 (voice in).
+> Status: Phases 0–2 done from source (spikes, core loop, voice in). Notes per phase in docs/. Next: Phase 3 (safe tools).
 > Next step is Phase 1 (core loop). Nothing committed yet.
 
 ---
@@ -257,11 +257,11 @@ Throwaway prototypes that answer the questions the architecture depends on.
 - **Exit:** install on a clean Windows VM, download models, type a question, Wisp answers aloud with lip sync — *works from source on the dev machine; clean-VM install waits for the Phase 6 installer*
 
 ### Phase 2 — Voice in
-- [ ] Mic capture, Silero VAD, wake word, push-to-talk
-- [ ] Streaming STT with end-of-speech detection
-- [ ] Barge-in and interrupt
-- [ ] Mic-active indicator on the avatar
-- **Exit:** hands-free conversation for 10 minutes without a false wake or a missed wake in a quiet room
+- [x] Mic capture, Silero VAD, wake word, push-to-talk
+- [x] Streaming STT with end-of-speech detection
+- [x] Barge-in and interrupt (wake phrase / hotkey; voice-activity barge-in opt-in because of speaker echo)
+- [x] Mic-active indicator on the avatar
+- **Exit:** hands-free conversation for 10 minutes without a false wake or a missed wake in a quiet room — *verified synthetically (virtual-cable loopback, see docs/phase2-voice-in.md); the human 10-minute session is still to do*
 
 ### Phase 3 — Safe tools
 - [ ] Tool registry, permission levels, confirmation cards, kill switch

@@ -165,6 +165,45 @@
       "title": "KillSwitchMsg",
       "type": "object"
     },
+    "MicStateMsg": {
+      "additionalProperties": false,
+      "description": "Voice pipeline mode for the avatar's mic indicator. `level` is 0..1 while listening.",
+      "properties": {
+        "type": {
+          "const": "mic.state",
+          "default": "mic.state",
+          "title": "Type",
+          "type": "string"
+        },
+        "mode": {
+          "enum": [
+            "off",
+            "idle",
+            "wake",
+            "listening",
+            "processing"
+          ],
+          "title": "Mode",
+          "type": "string"
+        },
+        "level": {
+          "default": 0.0,
+          "title": "Level",
+          "type": "number"
+        },
+        "reason": {
+          "default": "",
+          "description": "wake | ptt | voice | no speech | nothing heard | cancelled",
+          "title": "Reason",
+          "type": "string"
+        }
+      },
+      "required": [
+        "mode"
+      ],
+      "title": "MicStateMsg",
+      "type": "object"
+    },
     "ModelDownloadProgressMsg": {
       "additionalProperties": false,
       "properties": {
@@ -372,6 +411,27 @@
         "persona_id"
       ],
       "title": "PersonaSwitchMsg",
+      "type": "object"
+    },
+    "PlaybackMsg": {
+      "additionalProperties": false,
+      "description": "Shell tells the brain whether reply audio is currently playing (for barge-in and the speaking state).",
+      "properties": {
+        "type": {
+          "const": "playback",
+          "default": "playback",
+          "title": "Type",
+          "type": "string"
+        },
+        "speaking": {
+          "title": "Speaking",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "speaking"
+      ],
+      "title": "PlaybackMsg",
       "type": "object"
     },
     "PttStartMsg": {
@@ -833,6 +893,7 @@
           "error": "#/$defs/ErrorMsg",
           "expression": "#/$defs/ExpressionMsg",
           "hello": "#/$defs/HelloMsg",
+          "mic.state": "#/$defs/MicStateMsg",
           "model.download_progress": "#/$defs/ModelDownloadProgressMsg",
           "model.ready": "#/$defs/ModelReadyMsg",
           "models.info": "#/$defs/ModelsInfoMsg",
@@ -888,6 +949,9 @@
           "$ref": "#/$defs/ModelsInfoMsg"
         },
         {
+          "$ref": "#/$defs/MicStateMsg"
+        },
+        {
           "$ref": "#/$defs/ErrorMsg"
         }
       ],
@@ -900,6 +964,7 @@
           "kill_switch": "#/$defs/KillSwitchMsg",
           "models.download": "#/$defs/DownloadStartMsg",
           "persona.switch": "#/$defs/PersonaSwitchMsg",
+          "playback": "#/$defs/PlaybackMsg",
           "ptt.start": "#/$defs/PttStartMsg",
           "ptt.stop": "#/$defs/PttStopMsg",
           "settings.update": "#/$defs/SettingsUpdateMsg",
@@ -940,6 +1005,9 @@
         },
         {
           "$ref": "#/$defs/KillSwitchMsg"
+        },
+        {
+          "$ref": "#/$defs/PlaybackMsg"
         },
         {
           "$ref": "#/$defs/DownloadStartMsg"

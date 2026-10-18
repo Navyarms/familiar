@@ -29,7 +29,7 @@ export type ShellSnapshot = {
   lastHello?: unknown;
   lastModelsInfo?: unknown;
   lastState?: unknown;
-  hotkeys: { summon: string; kill: string };
+  hotkeys: { summon: string; talk: string; kill: string };
   version: string;
 };
 

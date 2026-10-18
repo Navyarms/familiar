@@ -6,7 +6,8 @@ import { BrainSupervisor } from './brain';
 import { createOverlay, createPanel, createSettings } from './windows';
 import { IPC, type ShellSnapshot } from '../shared/ipc';
 
-const HOTKEYS = { summon: 'CommandOrControl+Shift+Space', kill: 'CommandOrControl+Alt+Escape' };
+const HOTKEYS = { summon: 'CommandOrControl+Shift+Space', talk: 'CommandOrControl+Shift+M', kill: 'CommandOrControl+Alt+Escape' };
+let micMode: string = 'off'; // mirrors the brain's mic.state so the talk hotkey can toggle
 const isDev = !app.isPackaged;
 
 let overlay: BrowserWindow | null = null;
@@ -36,6 +37,12 @@ function showPanel(): void {
 function togglePanel(): void {
   if (panel?.isVisible()) panel.hide();
   else showPanel();
+}
+
+/** Talk hotkey: start capturing right away (no wake word); press again to stop early. */
+function toggleTalk(): void {
+  if (micMode === 'listening') brain.send({ type: 'ptt.stop' });
+  else brain.send({ type: 'ptt.start' });
 }
 
 function openSettings(): void {
@@ -78,7 +85,8 @@ app.whenReady().then(() => {
   tray = new Tray(trayIcon());
   tray.setToolTip('Familiar');
   tray.setContextMenu(Menu.buildFromTemplate([
-    { label: 'Talk to Wisp', click: showPanel, accelerator: HOTKEYS.summon },
+    { label: 'Open chat', click: showPanel, accelerator: HOTKEYS.summon },
+    { label: 'Talk (push to talk)', click: toggleTalk, accelerator: HOTKEYS.talk },
     { label: 'Settings…', click: openSettings },
     { type: 'separator' },
     { label: 'Stop speaking', click: () => brain.send({ type: 'interrupt' }) },
@@ -89,6 +97,7 @@ app.whenReady().then(() => {
   tray.on('click', togglePanel);
 
   globalShortcut.register(HOTKEYS.summon, togglePanel);
+  globalShortcut.register(HOTKEYS.talk, toggleTalk);
   globalShortcut.register(HOTKEYS.kill, () => brain.send({ type: 'kill_switch' }));
 
   // --- IPC ---------------------------------------------------------------------
@@ -100,6 +109,7 @@ app.whenReady().then(() => {
     overlay.setPosition(x + dx, y + dy);
   });
   ipcMain.on(IPC.overlayPlaybackState, (_e, state) => {
+    brain.send({ type: 'playback', speaking: state === 'speaking' }); // barge-in + speaking state live in the brain
     for (const w of BrowserWindow.getAllWindows()) w.webContents.send(IPC.brainMessage, { type: 'shell.playback', state });
   });
   ipcMain.on(IPC.panelHide, () => panel?.hide());
@@ -115,6 +125,7 @@ app.whenReady().then(() => {
 
   // First run: when the brain reports missing models, open settings so the user can start the download.
   brain.on('message', (msg: any) => {
+    if (msg.type === 'mic.state') micMode = msg.mode;
     if (msg.type === 'hello') {
       avatarPath = msg.persona?.avatar_path ?? null;
       if (isDev) net.fetch('familiar://avatar/current.vrm').then((r) => console.log(`[avatar] main self-test ${r.status}`)).catch((e) => console.log(`[avatar] main self-test failed: ${e}`));

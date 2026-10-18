@@ -10,6 +10,35 @@ let overAvatar = false, lastSent: boolean | null = null;
 let pendingExpressions = new Map<number, string>(); // sentence_id -> tag (applied when that sentence starts)
 let loaded = false;
 
+const micEl = document.getElementById('mic')!;
+let micMode = 'off';
+function setMic(mode: string, level: number, reason: string): void {
+  if (mode !== micMode) {
+    if (mode === 'listening') chime(reason === 'wake' ? 'wake' : 'start');
+    else if (micMode === 'listening' && mode === 'processing') chime('end');
+    micMode = mode;
+    micEl.className = mode;
+    if (mode === 'listening') avatar.state = 'listening';
+    else if (avatar.state === 'listening') avatar.state = 'idle';
+  }
+  if (mode === 'listening') micEl.style.boxShadow = `0 0 0 ${Math.round(2 + level * 14)}px rgba(60, 200, 130, ${0.15 + level * 0.35})`;
+  else micEl.style.boxShadow = 'none';
+}
+
+/** Short, soft earcons so the user knows when the mic opened/closed without looking. */
+const earcon = new AudioContext();
+function chime(kind: 'wake' | 'start' | 'end'): void {
+  void earcon.resume();
+  const t = earcon.currentTime;
+  const notes = kind === 'end' ? [[660, 0], [440, 0.09]] : kind === 'wake' ? [[523, 0], [784, 0.1]] : [[587, 0]];
+  for (const [f, dt] of notes) {
+    const o = earcon.createOscillator(), g = earcon.createGain();
+    o.type = 'sine'; o.frequency.value = f;
+    g.gain.setValueAtTime(0, t + dt); g.gain.linearRampToValueAtTime(0.12, t + dt + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t + dt + 0.16);
+    o.connect(g).connect(earcon.destination); o.start(t + dt); o.stop(t + dt + 0.18);
+  }
+}
+
 function showBadge(text: string, ms = 2500): void {
   badge.textContent = text;
   badge.classList.add('show');
@@ -44,11 +73,14 @@ window.familiar.brain.onMessage((msg: any) => {
       break;
     case 'state':
       if (msg.state === 'thinking' || msg.state === 'listening') avatar.state = msg.state;
-      else if (msg.state === 'idle' && avatar.state !== 'speaking') avatar.state = 'idle';
+      else if (msg.state === 'idle' && avatar.state !== 'speaking' && micMode !== 'listening') avatar.state = 'idle';
       else if (msg.state === 'booting' || msg.state === 'downloading') {
         avatar.state = 'booting';
         if (msg.detail) showBadge(msg.detail, 4000);
       }
+      break;
+    case 'mic.state':
+      setMic(msg.mode, msg.level ?? 0, msg.reason ?? '');
       break;
     case 'expression':
       if (msg.sentence_id == null) avatar.setExpression(msg.tag);
@@ -88,7 +120,7 @@ window.addEventListener('mousemove', (e) => {
     last = { x: e.screenX, y: e.screenY };
   }
 });
-window.addEventListener('dblclick', () => window.familiar.brain.send({ type: 'summon' }));
+window.addEventListener('dblclick', () => window.familiar.brain.send({ type: micMode === 'listening' ? 'ptt.stop' : 'ptt.start' }));
 window.addEventListener('contextmenu', (e) => {
   e.preventDefault();
   window.familiar.openSettings();

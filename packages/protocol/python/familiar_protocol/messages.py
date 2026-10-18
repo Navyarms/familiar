@@ -150,6 +150,15 @@ class ModelItemInfo(_Msg):
     present: bool
 
 
+class MicStateMsg(_Msg):
+    """Voice pipeline mode for the avatar's mic indicator. `level` is 0..1 while listening."""
+
+    type: Literal["mic.state"] = "mic.state"
+    mode: Literal["off", "idle", "wake", "listening", "processing"]
+    level: float = 0.0
+    reason: str = Field("", description="wake | ptt | voice | no speech | nothing heard | cancelled")
+
+
 class ErrorMsg(_Msg):
     type: Literal["error"] = "error"
     code: str
@@ -206,6 +215,13 @@ class KillSwitchMsg(_Msg):
     type: Literal["kill_switch"] = "kill_switch"
 
 
+class PlaybackMsg(_Msg):
+    """Shell tells the brain whether reply audio is currently playing (for barge-in and the speaking state)."""
+
+    type: Literal["playback"] = "playback"
+    speaking: bool
+
+
 class DownloadStartMsg(_Msg):
     """Shell asks the brain to start (or resume) downloading what the tier needs."""
 
@@ -226,6 +242,7 @@ BrainMessage = Annotated[
     | ModelDownloadProgressMsg
     | ModelReadyMsg
     | ModelsInfoMsg
+    | MicStateMsg
     | ErrorMsg,
     Field(discriminator="type"),
 ]
@@ -241,6 +258,7 @@ ShellMessage = Annotated[
     | PersonaSwitchMsg
     | SettingsUpdateMsg
     | KillSwitchMsg
+    | PlaybackMsg
     | DownloadStartMsg,
     Field(discriminator="type"),
 ]

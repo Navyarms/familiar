@@ -10,6 +10,8 @@ export function App() {
   const [input, setInput] = useState('');
   const [progress, setProgress] = useState<{ item: string; done: number; total: number; odone: number; ototal: number } | null>(null);
   const [needsDownload, setNeedsDownload] = useState(false);
+  const [mic, setMic] = useState<{ mode: string; level: number; reason: string }>({ mode: 'off', level: 0, reason: '' });
+  const [partial, setPartial] = useState('');
   const listRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const turnRef = useRef<string | null>(null);
@@ -34,8 +36,16 @@ export function App() {
           setProgress(null);
           setNeedsDownload(false);
           break;
+        case 'transcript.partial':
+          setPartial(m.text);
+          break;
         case 'transcript.final':
+          setPartial('');
           setMsgs((xs) => [...xs, { id: Math.random().toString(36).slice(2), role: 'user', text: m.text }]);
+          break;
+        case 'mic.state':
+          setMic({ mode: m.mode, level: m.level ?? 0, reason: m.reason ?? '' });
+          if (m.mode !== 'listening' && m.mode !== 'processing') setPartial('');
           break;
         case 'reply.token':
           setMsgs((xs) => {
@@ -84,19 +94,26 @@ export function App() {
   };
   const busy = state === 'thinking' || state === 'speaking';
   const ready = ['idle', 'thinking', 'speaking', 'listening'].includes(state);
+  const listening = mic.mode === 'listening';
+  const micAvailable = mic.mode !== 'off';
+  const toggleTalk = () => window.familiar.brain.send({ type: listening ? 'ptt.stop' : 'ptt.start' });
 
   return (
     <div className="panel">
       <div className="panel-head">
         <span className={`dot ${state}`} />
         <strong>{persona}</strong>
-        <span className="muted grow" style={{ fontSize: 12 }}>{labelFor(state, detail)}</span>
+        <span className="muted grow" style={{ fontSize: 12 }}>{listening ? 'listening…' : mic.mode === 'processing' ? 'transcribing…' : labelFor(state, detail, mic.mode)}</span>
         {busy && <button onClick={() => window.familiar.brain.send({ type: 'interrupt' })}>Stop</button>}
         <button title="Settings" onClick={() => window.familiar.openSettings()}>⚙</button>
         <button title="Hide (Esc)" onClick={() => window.familiar.panel.hide()}>✕</button>
       </div>
       <div className="transcript" ref={listRef}>
-        {msgs.length === 0 && ready && <div className="msg system">Say something to {persona}. Ctrl+Shift+Space toggles this panel.</div>}
+        {msgs.length === 0 && ready && (
+          <div className="msg system">
+            {mic.mode === 'wake' ? `Say “hey ${persona}” or press Ctrl+Shift+M to talk, or type below.` : `Type to ${persona} below.`} Ctrl+Shift+Space toggles this panel.
+          </div>
+        )}
         {needsDownload && !progress && (
           <div className="msg system">
             First run: {persona} needs to download its models.{' '}
@@ -110,6 +127,7 @@ export function App() {
             <div className="progress" style={{ marginTop: 6 }}><div style={{ width: `${(100 * progress.odone) / Math.max(1, progress.ototal)}%` }} /></div>
           </div>
         )}
+        {partial && <div className="msg user" style={{ opacity: 0.6, fontStyle: 'italic' }}>{partial}…</div>}
         {msgs.map((m) => (
           <div key={m.id} className={`msg ${m.role}`}>
             {m.text}
@@ -139,15 +157,21 @@ export function App() {
             }
           }}
         />
+        {micAvailable && (
+          <button className={listening ? 'primary' : ''} title={listening ? 'Stop listening' : 'Talk (Ctrl+Shift+M)'} onClick={toggleTalk}
+                  style={listening ? { boxShadow: `0 0 0 ${Math.round(2 + mic.level * 10)}px rgba(60,200,130,.35)` } : undefined}>
+            {listening ? '■' : '🎤'}
+          </button>
+        )}
         <button className="primary" disabled={!ready || !input.trim()} onClick={send}>Send</button>
       </div>
     </div>
   );
 }
 
-function labelFor(state: string, detail: string): string {
+function labelFor(state: string, detail: string, micMode: string): string {
   switch (state) {
-    case 'idle': return 'listening for text';
+    case 'idle': return micMode === 'wake' ? 'say the wake word or type' : 'ready';
     case 'thinking': return 'thinking…';
     case 'speaking': return 'speaking';
     case 'booting': return detail || 'starting…';
