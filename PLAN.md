@@ -5,7 +5,7 @@ answer questions or operate your PC, and hear it reply through a locally rendere
 Everything runs on-device. The app ships as a single installer anyone can use, and the character,
 voice, and personality live in swappable **persona packs**.
 
-> Status: Phases 0–4 done from source (spikes, core loop, voice in, safe tools, desktop automation). Notes per phase in docs/. Next: Phase 5 (memory).
+> Status: Phases 0–5 done from source (spikes, core loop, voice in, safe tools, desktop automation, memory). Notes per phase in docs/. Next: Phase 6 (polish and ship v0.1).
 > Next step is Phase 1 (core loop). Nothing committed yet.
 
 ---
@@ -275,10 +275,10 @@ Throwaway prototypes that answer the questions the architecture depends on.
 - **Exit:** "turn on Bluetooth" and "reply to the open email saying I'll be late" complete without help on a clean machine — *Bluetooth passes by voice (loopback); the email chain is untested against a real mail client (docs/phase4-desktop-automation.md)*
 
 ### Phase 5 — Memory
-- [ ] SQLite schema, embedding model download, retrieval into prompt
-- [ ] Idle-time summarization and fact extraction
-- [ ] Settings → Memory viewer with delete
-- **Exit:** tell it your dog's name, restart the PC, it remembers
+- [x] SQLite schema, embedding model download, retrieval into prompt
+- [x] Idle-time summarization and fact extraction
+- [x] Settings → Memory viewer with delete
+- **Exit:** tell it your dog's name, restart the PC, it remembers — *verified across two brain processes (docs/phase5-memory.md)*
 
 ### Phase 6 — Polish and ship v0.1
 - [ ] Settings UI complete, persona manager, voice preview

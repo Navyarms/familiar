@@ -54,6 +54,7 @@ TOOL_INSTRUCTIONS = (
     "is not where you expect after two tries, stop and tell the user what you see."
 )
 MEMORY_PREFIX = "\n\nThings you remember about the user:\n"
+TIME_WORDS = re.compile(r"\b(time|date|today|tomorrow|yesterday|tonight|morning|afternoon|evening|week|month|year|day|hour|minute|o'?clock|late|early|schedule|calendar|when|now|clock)\b", re.I)
 ANNOUNCE_RE = re.compile(r"^(?:\[\w+\]\s*)?(?:i['\u2019]ll|i will|let me|i['\u2019]m going to|checking|clicking|opening|looking|reading|typing|turning|setting|searching|finding|closing|pressing|focusing|snapping|minimizing|maximizing)\b", re.I)
 
 
@@ -107,12 +108,14 @@ class Turn:
     async def run(self, user_text: str) -> str:
         t0 = time.monotonic()
         use_tools = bool(self.registry and self.ctx and self.registry.available())
-        now = time.strftime("%A %B %d %Y, %I:%M %p").replace(" 0", " ")
-        # Time and remembered facts ride on the user turn, not the system prompt, so the cached prefix stays stable.
-        note = f"(It is now {now}. Use this if the question involves the time or date; do not mention this note."
+        # Time (only when the message is about time) and remembered facts ride on the user turn, not the system
+        # prompt, so the cached prefix stays stable. Small models tend to echo notes, so keep them short.
+        parts = []
+        if TIME_WORDS.search(user_text):
+            parts.append("It is now " + time.strftime("%A %B %d %Y, %I:%M %p").replace(" 0", " ") + ".")
         if self.memories:
-            note += " Things you remember about the user: " + "; ".join(self.memories[-20:]) + "."
-        user_content = f"{user_text}\n\n{note})"
+            parts.append("You remember: " + "; ".join(self.memories[-12:]) + ".")
+        user_content = user_text if not parts else f"{user_text}\n\n(Private context, do not read aloud: {' '.join(parts)})"
         messages = [{"role": "system", "content": build_system_prompt(self.persona, tools=use_tools)},
                     *(FEW_SHOT if use_tools else []), *self.history, {"role": "user", "content": user_content}]
         tools = self.registry.openai_tools() if use_tools else None

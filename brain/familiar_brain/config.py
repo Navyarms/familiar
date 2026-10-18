@@ -93,6 +93,10 @@ class Settings:
     interference_guard: bool = True  # pause automation while the user is using mouse/keyboard
     vision_max_width: int = 1024  # screenshot width sent to the vision model
     narrate_tools: bool = True  # short spoken progress notes during multi-step automation
+    # memory
+    memory_enabled: bool = True
+    memory_idle_s: float = 120.0  # summarize + extract facts after this much idle time
+    memory_min_turns: int = 2  # ... but only when at least this many new turns happened
     extra: dict = field(default_factory=dict)
 
     @staticmethod

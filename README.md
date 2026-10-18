@@ -12,7 +12,7 @@ can swap or share.
 - **Remembers:** persistent local memory you can inspect and delete.
 - **Yours to customize:** VRM avatar, voice, wake phrase, hotkeys, system prompt, tool permissions.
 
-Status: **Phases 0–4 done from source** — say “hey Wisp” (or press Ctrl+Shift+M, or type), ask questions or tell it to do things: open apps, click and type in them by element name, read windows, volume, files, clipboard, timers, weather, web, memory, Bluetooth. Risky actions ask first; it pauses while you use the mouse; Ctrl+Alt+Esc stops everything. See [PLAN.md](PLAN.md) and [docs/](docs/).
+Status: **Phases 0–5 done from source** — say “hey Wisp” (or press Ctrl+Shift+M, or type), ask questions or tell it to do things: open apps, click and type in them by element name, read windows, volume, files, clipboard, timers, weather, web, Bluetooth. It remembers what you tell it across restarts (you can see and delete everything in Settings → Memory). Risky actions ask first; it pauses while you use the mouse; Ctrl+Alt+Esc stops everything. See [PLAN.md](PLAN.md) and [docs/](docs/).
 
 ## Run from source (Windows)
 

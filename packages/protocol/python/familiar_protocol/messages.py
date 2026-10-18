@@ -185,6 +185,24 @@ class MicStateMsg(_Msg):
     reason: str = Field("", description="wake | ptt | voice | no speech | nothing heard | cancelled")
 
 
+class MemoryItem(_Msg):
+    id: int
+    kind: Literal["fact", "episode"]
+    text: str
+    created: str
+    source: str = ""
+    score: float | None = None
+
+
+class MemoryItemsMsg(_Msg):
+    """Answer to memory.list (or pushed after changes). `counts` = totals regardless of the query."""
+
+    type: Literal["memory.items"] = "memory.items"
+    items: list[MemoryItem]
+    counts: dict[str, int]
+    query: str = ""
+
+
 class ErrorMsg(_Msg):
     type: Literal["error"] = "error"
     code: str
@@ -241,6 +259,21 @@ class KillSwitchMsg(_Msg):
     type: Literal["kill_switch"] = "kill_switch"
 
 
+class MemoryListMsg(_Msg):
+    type: Literal["memory.list"] = "memory.list"
+    query: str = ""
+    limit: int = 100
+
+
+class MemoryDeleteMsg(_Msg):
+    """Delete one item, or everything when `all` is true."""
+
+    type: Literal["memory.delete"] = "memory.delete"
+    kind: Literal["fact", "episode"] | None = None
+    id: int | None = None
+    all: bool = False
+
+
 class PlaybackMsg(_Msg):
     """Shell tells the brain whether reply audio is currently playing (for barge-in and the speaking state)."""
 
@@ -271,6 +304,7 @@ BrainMessage = Annotated[
     | ModelReadyMsg
     | ModelsInfoMsg
     | MicStateMsg
+    | MemoryItemsMsg
     | ErrorMsg,
     Field(discriminator="type"),
 ]
@@ -287,6 +321,8 @@ ShellMessage = Annotated[
     | SettingsUpdateMsg
     | KillSwitchMsg
     | PlaybackMsg
+    | MemoryListMsg
+    | MemoryDeleteMsg
     | DownloadStartMsg,
     Field(discriminator="type"),
 ]

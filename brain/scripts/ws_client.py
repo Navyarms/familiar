@@ -28,6 +28,7 @@ async def main() -> None:
     ap.add_argument("--confirm", choices=["allow", "deny", "none"], default="none", help="auto-answer tool confirmation cards")
     ap.add_argument("--no-speak", action="store_true")
     ap.add_argument("--timeout", type=float, default=300)
+    ap.add_argument("--wait", type=float, default=1.0, help="seconds to wait after boot before the first prompt (lets idle memory work run)")
     a = ap.parse_args()
     token = "devtoken"
     proc = subprocess.Popen([sys.executable, "-m", "familiar_brain", "--token", token, "--dev", "--no-stdin-watch"],
@@ -78,8 +79,11 @@ async def main() -> None:
                 # send the next prompt after each reply.done so we never interrupt a running turn.
                 if not started and (t == "mic.state" or (t == "model.ready" and a.no_speak)):
                     started = True
-                    await asyncio.sleep(1.0)
+                    await asyncio.sleep(a.wait)
                     send_next = True
+                elif t == "memory.items":
+                    print(f"\n{ts} MEMORY counts={m['counts']} items={[i['text'][:50] for i in m['items'][:6]]}")
+                    send_next = False
                 else:
                     send_next = started and t == "reply.done" and not str(m.get("turn_id", "")).startswith("announce")
                 if send_next:

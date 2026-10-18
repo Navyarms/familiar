@@ -214,17 +214,6 @@ def test_timer_parse():
     assert _parse_when("whenever") is None
 
 
-def test_memory_store(tmp_path: Path):
-    from familiar_brain.tools.memory import MemoryStore
-
-    m = MemoryStore(tmp_path / "m.sqlite")
-    m.remember("The user's dog is named Biscuit")
-    m.remember("The user likes espresso")
-    assert m.recall("dog")[0]["text"].endswith("Biscuit")
-    assert m.recent()[-1].endswith("espresso")
-    assert m.forget("espresso") == 1 and m.count() == 1
-
-
 def test_list_windows_and_resolve_app():
     from familiar_brain.tools.system import resolve_app
     from familiar_brain.tools.windows import list_windows

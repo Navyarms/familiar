@@ -76,6 +76,14 @@ WHISPER_BASE = _whisper("faster-whisper-base", "whisper-base", 145217532,
                         "d01c3014881c9c6f3133c182f3d2887eb6ca1c789a7538c5c007196857a0a6a9",
                         2309, "56a6d8110d311f19c8f0471e562832c7527f146b567275bfca59fcf7c184da9a")
 
+_EMB = _HF + "Xenova/bge-small-en-v1.5/resolve/main/"
+EMBED = [
+    Item("model_quantized.onnx", _EMB + "onnx/model_quantized.onnx", 34014426,
+         "6c9c6101a956d62dfb5e7190c538226c0c5bb9cb27b651234b6df063ee7dbfe4", "embed", subdir="bge-small-en-v1.5"),
+    Item("tokenizer.json", _EMB + "tokenizer.json", 711396,
+         "d241a60d5e8f04cc1b2b3e9ef7a4921b27bf526d9f6050ab90f9267a1f9e5c66", "embed", subdir="bge-small-en-v1.5"),
+]
+
 RUNTIME_CPU = Item(f"llama-{LLAMA_BUILD}-bin-win-cpu-x64.zip", _LL + f"llama-{LLAMA_BUILD}-bin-win-cpu-x64.zip", 18 * 2**20, None, "runtime")
 RUNTIME_VULKAN = Item(f"llama-{LLAMA_BUILD}-bin-win-vulkan-x64.zip", _LL + f"llama-{LLAMA_BUILD}-bin-win-vulkan-x64.zip", 30 * 2**20, None, "runtime")
 
@@ -92,4 +100,4 @@ TIER_MODELS: dict[str, dict] = {
 
 def items_for_tier(tier: str) -> list[Item]:
     t = TIER_MODELS[tier]
-    return [t["runtime"], t["chat"], t["mmproj"], KOKORO, KOKORO_VOICES, SILERO_VAD, KWS_EN, *t["stt"]]
+    return [t["runtime"], t["chat"], t["mmproj"], KOKORO, KOKORO_VOICES, SILERO_VAD, KWS_EN, *t["stt"], *EMBED]

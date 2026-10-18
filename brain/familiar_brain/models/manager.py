@@ -92,6 +92,11 @@ class ModelManager:
     def stt_dir(self) -> Path:
         return self._dest(TIER_MODELS[self.tier]["stt"][0]).parent
 
+    def embed_dir(self) -> Path:
+        from .manifest import EMBED
+
+        return self._dest(EMBED[0]).parent
+
     # ---------------------------------------------------------------- status
     def required(self) -> list[Item]:
         items = items_for_tier(self.tier)

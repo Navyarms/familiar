@@ -67,6 +67,22 @@ class LlmClient:
         log.info("prefix warmed in %.2fs (%s prompt tokens)", dt, r.json().get("usage", {}).get("prompt_tokens"))
         return dt
 
+    async def complete_json(self, messages: list[dict], schema: dict, *, max_tokens: int = 400, temperature: float = 0.1) -> dict:
+        """Non-streamed completion constrained to a JSON schema (llama-server turns it into a grammar)."""
+        body = {"messages": messages, "max_tokens": max_tokens, "temperature": temperature, "cache_prompt": True,
+                "chat_template_kwargs": {"enable_thinking": False},
+                "response_format": {"type": "json_schema", "json_schema": {"name": "out", "schema": schema}}}
+        r = await self._client.post(f"{self.base_url}/v1/chat/completions", json=body, timeout=httpx.Timeout(10, read=300))
+        if r.status_code >= 400:
+            raise RuntimeError(f"json completion failed: {r.text[:200]}")
+        text = (r.json()["choices"][0]["message"].get("content") or "").strip()
+        try:
+            return json.loads(text)
+        except json.JSONDecodeError:
+            dec = json.JSONDecoder()
+            obj, _ = dec.raw_decode(text[text.index("{"):])
+            return obj
+
     async def ask_image(self, png: bytes, prompt: str, *, max_tokens: int = 220) -> str:
         """One non-streamed vision question (needs llama-server started with --mmproj)."""
         import base64

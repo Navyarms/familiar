@@ -10,6 +10,8 @@ export function App() {
   const [progress, setProgress] = useState<any>(null);
   const [errors, setErrors] = useState<string[]>([]);
   const [tools, setTools] = useState<any[]>([]);
+  const [memory, setMemory] = useState<{ items: any[]; counts: Record<string, number>; query: string } | null>(null);
+  const [memQuery, setMemQuery] = useState('');
 
   useEffect(() => {
     window.familiar.snapshot().then((s: any) => {
@@ -27,8 +29,10 @@ export function App() {
       if (m.type === 'model.ready') setProgress(null);
       if (m.type === 'error') setErrors((xs) => [...xs.slice(-4), `${m.code}: ${m.message}`]);
       if (m.type === 'tools.info') setTools(m.tools);
+      if (m.type === 'memory.items') setMemory({ items: m.items, counts: m.counts, query: m.query ?? '' });
     });
     const offS = window.familiar.brain.onStatus(setStatus);
+    window.familiar.brain.send({ type: 'memory.list', query: '', limit: 100 });
     return () => {
       off();
       offS();
@@ -87,6 +91,35 @@ export function App() {
               </div>
             )}
           </>
+        )}
+      </div>
+
+      <h2>Memory</h2>
+      <div className="card">
+        <p className="muted" style={{ marginTop: 0 }}>
+          Facts Wisp keeps about you and short summaries of past conversations. Stored only in <code>%LOCALAPPDATA%\Familiar\memory.sqlite</code>.
+          {memory && <> · {memory.counts.facts ?? 0} facts, {memory.counts.episodes ?? 0} episodes, {memory.counts.turns ?? 0} turns waiting to be summarized.</>}
+        </p>
+        <div className="row" style={{ marginBottom: 10 }}>
+          <input className="grow" placeholder="search memory…" value={memQuery} onChange={(e) => setMemQuery(e.target.value)}
+                 onKeyDown={(e) => { if (e.key === 'Enter') window.familiar.brain.send({ type: 'memory.list', query: memQuery, limit: 100 }); }} />
+          <button onClick={() => window.familiar.brain.send({ type: 'memory.list', query: memQuery, limit: 100 })}>Search</button>
+          <button onClick={() => { setMemQuery(''); window.familiar.brain.send({ type: 'memory.list', query: '', limit: 100 }); }}>All</button>
+          <button className="err" title="Delete every fact and episode"
+                  onClick={() => { if (confirm('Delete everything Wisp remembers? This cannot be undone.')) window.familiar.brain.send({ type: 'memory.delete', all: true }); }}>Forget all</button>
+        </div>
+        {!memory ? <span className="muted">waiting for the brain…</span> : memory.items.length === 0 ? <span className="muted">nothing remembered yet{memory.query ? ` for “${memory.query}”` : ''}.</span> : (
+          <table className="items">
+            <tbody>
+              {memory.items.map((it) => (
+                <tr key={`${it.kind}-${it.id}`}>
+                  <td style={{ width: 70 }}><span className={`risk ${it.kind === 'fact' ? 'low' : 'medium'}`}>{it.kind}</span></td>
+                  <td>{it.text}<div className="muted" style={{ fontSize: 11 }}>{it.created?.slice(0, 16).replace('T', ' ')}{it.source ? ` · ${it.source}` : ''}{it.score != null ? ` · ${(it.score * 100).toFixed(0)}%` : ''}</div></td>
+                  <td style={{ width: 70 }}><button onClick={() => window.familiar.brain.send({ type: 'memory.delete', kind: it.kind, id: it.id })}>Delete</button></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         )}
       </div>
 

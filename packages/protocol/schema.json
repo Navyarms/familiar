@@ -165,6 +165,163 @@
       "title": "KillSwitchMsg",
       "type": "object"
     },
+    "MemoryDeleteMsg": {
+      "additionalProperties": false,
+      "description": "Delete one item, or everything when `all` is true.",
+      "properties": {
+        "type": {
+          "const": "memory.delete",
+          "default": "memory.delete",
+          "title": "Type",
+          "type": "string"
+        },
+        "kind": {
+          "anyOf": [
+            {
+              "enum": [
+                "fact",
+                "episode"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Kind"
+        },
+        "id": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Id"
+        },
+        "all": {
+          "default": false,
+          "title": "All",
+          "type": "boolean"
+        }
+      },
+      "title": "MemoryDeleteMsg",
+      "type": "object"
+    },
+    "MemoryItem": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "integer"
+        },
+        "kind": {
+          "enum": [
+            "fact",
+            "episode"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "text": {
+          "title": "Text",
+          "type": "string"
+        },
+        "created": {
+          "title": "Created",
+          "type": "string"
+        },
+        "source": {
+          "default": "",
+          "title": "Source",
+          "type": "string"
+        },
+        "score": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Score"
+        }
+      },
+      "required": [
+        "id",
+        "kind",
+        "text",
+        "created"
+      ],
+      "title": "MemoryItem",
+      "type": "object"
+    },
+    "MemoryItemsMsg": {
+      "additionalProperties": false,
+      "description": "Answer to memory.list (or pushed after changes). `counts` = totals regardless of the query.",
+      "properties": {
+        "type": {
+          "const": "memory.items",
+          "default": "memory.items",
+          "title": "Type",
+          "type": "string"
+        },
+        "items": {
+          "items": {
+            "$ref": "#/$defs/MemoryItem"
+          },
+          "title": "Items",
+          "type": "array"
+        },
+        "counts": {
+          "additionalProperties": {
+            "type": "integer"
+          },
+          "title": "Counts",
+          "type": "object"
+        },
+        "query": {
+          "default": "",
+          "title": "Query",
+          "type": "string"
+        }
+      },
+      "required": [
+        "items",
+        "counts"
+      ],
+      "title": "MemoryItemsMsg",
+      "type": "object"
+    },
+    "MemoryListMsg": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "memory.list",
+          "default": "memory.list",
+          "title": "Type",
+          "type": "string"
+        },
+        "query": {
+          "default": "",
+          "title": "Query",
+          "type": "string"
+        },
+        "limit": {
+          "default": 100,
+          "title": "Limit",
+          "type": "integer"
+        }
+      },
+      "title": "MemoryListMsg",
+      "type": "object"
+    },
     "MicStateMsg": {
       "additionalProperties": false,
       "description": "Voice pipeline mode for the avatar's mic indicator. `level` is 0..1 while listening.",
@@ -1008,6 +1165,7 @@
           "error": "#/$defs/ErrorMsg",
           "expression": "#/$defs/ExpressionMsg",
           "hello": "#/$defs/HelloMsg",
+          "memory.items": "#/$defs/MemoryItemsMsg",
           "mic.state": "#/$defs/MicStateMsg",
           "model.download_progress": "#/$defs/ModelDownloadProgressMsg",
           "model.ready": "#/$defs/ModelReadyMsg",
@@ -1075,6 +1233,9 @@
           "$ref": "#/$defs/MicStateMsg"
         },
         {
+          "$ref": "#/$defs/MemoryItemsMsg"
+        },
+        {
           "$ref": "#/$defs/ErrorMsg"
         }
       ],
@@ -1085,6 +1246,8 @@
         "mapping": {
           "interrupt": "#/$defs/InterruptMsg",
           "kill_switch": "#/$defs/KillSwitchMsg",
+          "memory.delete": "#/$defs/MemoryDeleteMsg",
+          "memory.list": "#/$defs/MemoryListMsg",
           "models.download": "#/$defs/DownloadStartMsg",
           "persona.switch": "#/$defs/PersonaSwitchMsg",
           "playback": "#/$defs/PlaybackMsg",
@@ -1131,6 +1294,12 @@
         },
         {
           "$ref": "#/$defs/PlaybackMsg"
+        },
+        {
+          "$ref": "#/$defs/MemoryListMsg"
+        },
+        {
+          "$ref": "#/$defs/MemoryDeleteMsg"
         },
         {
           "$ref": "#/$defs/DownloadStartMsg"

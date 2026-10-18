@@ -22,6 +22,7 @@ export type Brain =
   | ModelReadyMsg
   | ModelsInfoMsg
   | MicStateMsg
+  | MemoryItemsMsg
   | ErrorMsg;
 export type Type = "hello";
 export type Protocol = number;
@@ -135,7 +136,16 @@ export type Level = number;
  * wake | ptt | voice | no speech | nothing heard | cancelled
  */
 export type Reason = string;
-export type Type16 = "error";
+export type Type16 = "memory.items";
+export type Id1 = number;
+export type Kind = "fact" | "episode";
+export type Text5 = string;
+export type Created = string;
+export type Source = string;
+export type Score = number | null;
+export type Items = MemoryItem[];
+export type Query = string;
+export type Type17 = "error";
 export type Code = string;
 export type Message = string;
 export type Fatal = boolean;
@@ -151,25 +161,34 @@ export type Shell =
   | SettingsUpdateMsg
   | KillSwitchMsg
   | PlaybackMsg
+  | MemoryListMsg
+  | MemoryDeleteMsg
   | DownloadStartMsg;
-export type Type17 = "summon";
-export type Type18 = "ptt.start";
-export type Type19 = "ptt.stop";
-export type Type20 = "text.send";
-export type Text5 = string;
+export type Type18 = "summon";
+export type Type19 = "ptt.start";
+export type Type20 = "ptt.stop";
+export type Type21 = "text.send";
+export type Text6 = string;
 export type Speak = boolean;
-export type Type21 = "interrupt";
-export type Type22 = "tool.confirm";
+export type Type22 = "interrupt";
+export type Type23 = "tool.confirm";
 export type RequestId3 = string;
-export type Type23 = "tool.deny";
+export type Type24 = "tool.deny";
 export type RequestId4 = string;
-export type Type24 = "persona.switch";
+export type Type25 = "persona.switch";
 export type PersonaId = string;
-export type Type25 = "settings.update";
-export type Type26 = "kill_switch";
-export type Type27 = "playback";
+export type Type26 = "settings.update";
+export type Type27 = "kill_switch";
+export type Type28 = "playback";
 export type Speaking = boolean;
-export type Type28 = "models.download";
+export type Type29 = "memory.list";
+export type Query1 = string;
+export type Limit = number;
+export type Type30 = "memory.delete";
+export type Kind1 = ("fact" | "episode") | null;
+export type Id2 = number | null;
+export type All = boolean;
+export type Type31 = "models.download";
 
 /**
  * Only used to emit one combined JSON schema with both directions.
@@ -431,11 +450,38 @@ export interface MicStateMsg {
   reason?: Reason;
 }
 /**
+ * Answer to memory.list (or pushed after changes). `counts` = totals regardless of the query.
+ *
+ * This interface was referenced by `FamiliarProtocol`'s JSON-Schema
+ * via the `definition` "MemoryItemsMsg".
+ */
+export interface MemoryItemsMsg {
+  type?: Type16;
+  items: Items;
+  counts: Counts;
+  query?: Query;
+}
+/**
+ * This interface was referenced by `FamiliarProtocol`'s JSON-Schema
+ * via the `definition` "MemoryItem".
+ */
+export interface MemoryItem {
+  id: Id1;
+  kind: Kind;
+  text: Text5;
+  created: Created;
+  source?: Source;
+  score?: Score;
+}
+export interface Counts {
+  [k: string]: number;
+}
+/**
  * This interface was referenced by `FamiliarProtocol`'s JSON-Schema
  * via the `definition` "ErrorMsg".
  */
 export interface ErrorMsg {
-  type?: Type16;
+  type?: Type17;
   code: Code;
   message: Message;
   fatal?: Fatal;
@@ -445,29 +491,29 @@ export interface ErrorMsg {
  * via the `definition` "SummonMsg".
  */
 export interface SummonMsg {
-  type?: Type17;
+  type?: Type18;
 }
 /**
  * This interface was referenced by `FamiliarProtocol`'s JSON-Schema
  * via the `definition` "PttStartMsg".
  */
 export interface PttStartMsg {
-  type?: Type18;
+  type?: Type19;
 }
 /**
  * This interface was referenced by `FamiliarProtocol`'s JSON-Schema
  * via the `definition` "PttStopMsg".
  */
 export interface PttStopMsg {
-  type?: Type19;
+  type?: Type20;
 }
 /**
  * This interface was referenced by `FamiliarProtocol`'s JSON-Schema
  * via the `definition` "TextSendMsg".
  */
 export interface TextSendMsg {
-  type?: Type20;
-  text: Text5;
+  type?: Type21;
+  text: Text6;
   speak?: Speak;
 }
 /**
@@ -475,14 +521,14 @@ export interface TextSendMsg {
  * via the `definition` "InterruptMsg".
  */
 export interface InterruptMsg {
-  type?: Type21;
+  type?: Type22;
 }
 /**
  * This interface was referenced by `FamiliarProtocol`'s JSON-Schema
  * via the `definition` "ToolConfirmMsg".
  */
 export interface ToolConfirmMsg {
-  type?: Type22;
+  type?: Type23;
   request_id: RequestId3;
 }
 /**
@@ -490,7 +536,7 @@ export interface ToolConfirmMsg {
  * via the `definition` "ToolDenyMsg".
  */
 export interface ToolDenyMsg {
-  type?: Type23;
+  type?: Type24;
   request_id: RequestId4;
 }
 /**
@@ -498,7 +544,7 @@ export interface ToolDenyMsg {
  * via the `definition` "PersonaSwitchMsg".
  */
 export interface PersonaSwitchMsg {
-  type?: Type24;
+  type?: Type25;
   persona_id: PersonaId;
 }
 /**
@@ -506,7 +552,7 @@ export interface PersonaSwitchMsg {
  * via the `definition` "SettingsUpdateMsg".
  */
 export interface SettingsUpdateMsg {
-  type?: Type25;
+  type?: Type26;
   settings: Settings;
 }
 export interface Settings {
@@ -517,7 +563,7 @@ export interface Settings {
  * via the `definition` "KillSwitchMsg".
  */
 export interface KillSwitchMsg {
-  type?: Type26;
+  type?: Type27;
 }
 /**
  * Shell tells the brain whether reply audio is currently playing (for barge-in and the speaking state).
@@ -526,8 +572,29 @@ export interface KillSwitchMsg {
  * via the `definition` "PlaybackMsg".
  */
 export interface PlaybackMsg {
-  type?: Type27;
+  type?: Type28;
   speaking: Speaking;
+}
+/**
+ * This interface was referenced by `FamiliarProtocol`'s JSON-Schema
+ * via the `definition` "MemoryListMsg".
+ */
+export interface MemoryListMsg {
+  type?: Type29;
+  query?: Query1;
+  limit?: Limit;
+}
+/**
+ * Delete one item, or everything when `all` is true.
+ *
+ * This interface was referenced by `FamiliarProtocol`'s JSON-Schema
+ * via the `definition` "MemoryDeleteMsg".
+ */
+export interface MemoryDeleteMsg {
+  type?: Type30;
+  kind?: Kind1;
+  id?: Id2;
+  all?: All;
 }
 /**
  * Shell asks the brain to start (or resume) downloading what the tier needs.
@@ -536,5 +603,5 @@ export interface PlaybackMsg {
  * via the `definition` "DownloadStartMsg".
  */
 export interface DownloadStartMsg {
-  type?: Type28;
+  type?: Type31;
 }

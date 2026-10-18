@@ -19,10 +19,10 @@ from .audio.vad import SileroVAD
 from .audio.wakeword import WakeWord
 from .config import BRAIN_VERSION, Paths, Settings
 from .llm import LlamaServer, LlmClient, default_threads
+from .memory import Embedder, MemoryStore, extract_and_summarize
 from .models import ModelManager
 from .persona import Persona, list_personas, load_persona
 from .tools import REGISTRY, ToolContext
-from .tools.memory import MemoryStore
 from .tts import KokoroTTS
 
 log = logging.getLogger(__name__)
@@ -50,7 +50,10 @@ class Brain:
         self.registry.configure(settings)
         self.kill_event = asyncio.Event()
         self.pending_confirms: dict[str, asyncio.Future] = {}
-        self.memory = MemoryStore(paths.home / "memory.sqlite")
+        self.memory = MemoryStore(paths.home / "memory.sqlite")  # keyword-only until the embedder loads
+        self.memory_task: asyncio.Task | None = None
+        self._turns_since_memory = 0
+        self._last_activity = time.monotonic()
         self.tool_ctx: ToolContext | None = None
         self._announce_n = 0
         self._announce_queue: list[str] = []
@@ -141,6 +144,41 @@ class Brain:
                 log.exception("announce tts failed")
         self.history.append({"role": "assistant", "content": text})
         await self.send({"type": "reply.done", "turn_id": tid, "text": text, "interrupted": False, "stats": {}})
+
+    # ------------------------------------------------------------ memory
+    async def _memory_loop(self) -> None:
+        """Every few seconds: if the conversation has been idle long enough (or turns are pending from a previous run),
+        summarize + extract facts. Never while a turn is running; the LLM request is cancelled if a turn starts."""
+        await asyncio.sleep(5)
+        while True:
+            try:
+                await asyncio.sleep(5)
+                if not (self.settings.memory_enabled and self.llm and self.ready):
+                    continue
+                if self.turn_task and not self.turn_task.done():
+                    continue
+                pending = self.memory.pending_turns()
+                idle = time.monotonic() - self._last_activity
+                enough = self._turns_since_memory >= self.settings.memory_min_turns or (pending and self._turns_since_memory == 0)
+                if pending and enough and idle >= self.settings.memory_idle_s:
+                    await self.consolidate_memory(pending)
+            except asyncio.CancelledError:
+                return
+            except Exception:
+                log.exception("memory loop")
+
+    async def consolidate_memory(self, pending: list[dict] | None = None) -> dict:
+        pending = pending if pending is not None else self.memory.pending_turns()
+        if not pending:
+            return {"new_facts": []}
+        res = await extract_and_summarize(self.llm, self.memory, pending)
+        self._turns_since_memory = 0
+        if res.get("new_facts") or res.get("episode_id"):
+            await self.send(self.memory_items())
+        return res
+
+    def memory_items(self, query: str = "", limit: int = 100) -> dict:
+        return {"type": "memory.items", "items": self.memory.list_items(query, limit), "counts": self.memory.counts(), "query": query}
 
     async def kill(self) -> None:
         """Kill switch: stop the current turn, deny every pending confirmation, cancel what we can."""
@@ -236,6 +274,15 @@ class Brain:
             self.tts = None
         await self.set_state("booting", "warming up")
         await self.warm()
+        try:
+            emb = await asyncio.to_thread(Embedder, self.models.embed_dir())
+            self.memory = MemoryStore(self.paths.home / "memory.sqlite", emb)
+            if self.tool_ctx:
+                self.tool_ctx.extra["memory"] = self.memory
+            log.info("memory: %s", self.memory.counts())
+        except Exception as e:
+            log.warning("embedder unavailable, memory falls back to keyword search: %s", e)
+        self.memory_task = asyncio.create_task(self._memory_loop())
         self.ready = True
         await self.send({"type": "model.ready", "tier": self.models.tier, "chat_model": self.models.chat_model_path().name,
                          "tts_model": "kokoro-v1.0" if self.tts else "none"})
@@ -313,6 +360,8 @@ class Brain:
             log.warning("warm-up failed: %s", e)
 
     async def shutdown(self) -> None:
+        if self.memory_task:
+            self.memory_task.cancel()
         await self.stop_voice()
         await self.interrupt()
         if self.llm:
@@ -326,13 +375,21 @@ class Brain:
             await self.send({"type": "error", "code": "not_ready", "message": "still starting up", "fatal": False})
             return
         await self.interrupt()
+        memories = self.memory.context_for(text) if self.settings.memory_enabled else []
         turn = Turn(llm=self.llm, tts=self.tts, persona=self.persona, history=self.history, send=self.send, speak=speak,
-                    registry=self.registry, ctx=self._ctx(), confirm=self.confirm, memories=self.memory.recent())
+                    registry=self.registry, ctx=self._ctx(), confirm=self.confirm, memories=memories)
         await self.send({"type": "transcript.final", "text": text})
+        self._last_activity = time.monotonic()
 
         async def _run():
             try:
-                await turn.run(text)
+                reply = await turn.run(text)
+                if self.settings.memory_enabled and not turn.interrupted:
+                    self.memory.add_turn("user", text)
+                    if reply or turn.tool_log:
+                        self.memory.add_turn("assistant", reply or "(did: " + "; ".join(t["summary"] for t in turn.tool_log) + ")")
+                    self._turns_since_memory += 1
+                    self._last_activity = time.monotonic()
             except asyncio.CancelledError:
                 pass
             except Exception as e:
@@ -387,6 +444,14 @@ class Brain:
             self.resolve_confirm(msg.request_id, True)
         elif t == "tool.deny":
             self.resolve_confirm(msg.request_id, False)
+        elif t == "memory.list":
+            await self.send(self.memory_items(msg.query, msg.limit))
+        elif t == "memory.delete":
+            if msg.all:
+                self.memory.delete_all()
+            elif msg.kind and msg.id is not None:
+                self.memory.delete(msg.kind, msg.id)
+            await self.send(self.memory_items())
         elif t == "models.download":
             await self.download_then_start()
         elif t == "persona.switch":
