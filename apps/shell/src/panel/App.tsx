@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 
-type Msg = { id: string; role: 'user' | 'assistant' | 'system'; text: string; stats?: Record<string, number>; streaming?: boolean };
+type Msg = { id: string; role: 'user' | 'assistant' | 'system' | 'tool'; text: string; stats?: Record<string, number>; streaming?: boolean; tool?: ToolCard };
+type ToolCard = { request_id: string; tool: string; args: Record<string, unknown>; description: string; risk?: string; status: 'confirm' | 'running' | 'ok' | 'failed' | 'denied'; summary?: string };
 
 export function App() {
   const [msgs, setMsgs] = useState<Msg[]>([]);
@@ -61,9 +62,26 @@ export function App() {
           setMsgs((xs) => {
             const i = xs.findIndex((x) => x.id === m.turn_id);
             const done: Msg = { id: m.turn_id, role: 'assistant', text: m.text || (m.interrupted ? '(stopped)' : ''), stats: m.stats };
+            if (!m.text && !m.interrupted && i < 0) return xs; // tool-only turn: the cards already tell the story
             return i >= 0 ? [...xs.slice(0, i), done, ...xs.slice(i + 1)] : [...xs, done];
           });
           turnRef.current = null;
+          break;
+        case 'tool.request_confirm':
+          turnRef.current = null; // tokens after the card start a fresh bubble
+          setMsgs((xs) => [...xs, { id: 'tool-' + m.request_id, role: 'tool', text: '', tool: { request_id: m.request_id, tool: m.tool, args: m.args, description: m.description, risk: m.risk, status: 'confirm' } }]);
+          break;
+        case 'tool.start':
+          turnRef.current = null;
+          setMsgs((xs) => upsertCard(xs, { request_id: m.request_id, tool: m.tool, args: m.args, description: m.description, status: 'running' }));
+          break;
+        case 'tool.result':
+          turnRef.current = null;
+          setMsgs((xs) => {
+            const prev = xs.find((x) => x.id === 'tool-' + m.request_id)?.tool;
+            const status: ToolCard['status'] = m.ok ? 'ok' : /declined|not allowed|turned off/.test(m.summary) ? 'denied' : 'failed';
+            return upsertCard(xs, { request_id: m.request_id, tool: m.tool, args: prev?.args ?? {}, description: prev?.description ?? m.tool, risk: prev?.risk, status, summary: m.summary });
+          });
           break;
         case 'error':
           setMsgs((xs) => [...xs, { id: Math.random().toString(36).slice(2), role: 'system', text: `${m.code}: ${m.message}` }]);
@@ -92,8 +110,8 @@ export function App() {
     window.familiar.brain.send({ type: 'text.send', text, speak: true });
     setInput('');
   };
-  const busy = state === 'thinking' || state === 'speaking';
-  const ready = ['idle', 'thinking', 'speaking', 'listening'].includes(state);
+  const busy = state === 'thinking' || state === 'speaking' || state === 'executing' || state === 'needs_confirm';
+  const ready = ['idle', 'thinking', 'speaking', 'listening', 'executing', 'needs_confirm'].includes(state);
   const listening = mic.mode === 'listening';
   const micAvailable = mic.mode !== 'off';
   const toggleTalk = () => window.familiar.brain.send({ type: listening ? 'ptt.stop' : 'ptt.start' });
@@ -128,7 +146,7 @@ export function App() {
           </div>
         )}
         {partial && <div className="msg user" style={{ opacity: 0.6, fontStyle: 'italic' }}>{partial}…</div>}
-        {msgs.map((m) => (
+        {msgs.map((m) => m.role === 'tool' && m.tool ? <ToolCardView key={m.id} card={m.tool} /> : (
           <div key={m.id} className={`msg ${m.role}`}>
             {m.text}
             {m.stats && m.stats.ttft_s != null && (
@@ -169,8 +187,42 @@ export function App() {
   );
 }
 
+function upsertCard(xs: Msg[], card: ToolCard): Msg[] {
+  const id = 'tool-' + card.request_id;
+  const i = xs.findIndex((x) => x.id === id);
+  const msg: Msg = { id, role: 'tool', text: '', tool: card };
+  return i >= 0 ? [...xs.slice(0, i), msg, ...xs.slice(i + 1)] : [...xs, msg];
+}
+
+function ToolCardView({ card }: { card: ToolCard }) {
+  const icon = { confirm: '?', running: '…', ok: '✓', failed: '✗', denied: '–' }[card.status];
+  const argText = Object.entries(card.args || {}).map(([k, v]) => `${k}: ${typeof v === 'string' ? v : JSON.stringify(v)}`).join(' · ');
+  return (
+    <div className={`tool-card ${card.status}`}>
+      <div className="row">
+        <span className="tool-icon">{icon}</span>
+        <span className="grow">
+          <strong>{card.description}</strong>
+          {argText && <span className="muted" style={{ marginLeft: 6, fontSize: 11 }}>{argText.slice(0, 120)}</span>}
+        </span>
+        {card.risk && card.status === 'confirm' && <span className={`risk ${card.risk}`}>{card.risk}</span>}
+      </div>
+      {card.status === 'confirm' && (
+        <div className="row" style={{ marginTop: 8 }}>
+          <span className="muted grow" style={{ fontSize: 12 }}>Allow this? You can also say yes or no.</span>
+          <button onClick={() => window.familiar.brain.send({ type: 'tool.deny', request_id: card.request_id })}>Deny</button>
+          <button className="primary" onClick={() => window.familiar.brain.send({ type: 'tool.confirm', request_id: card.request_id })}>Allow</button>
+        </div>
+      )}
+      {card.summary && card.status !== 'confirm' && <div className="muted" style={{ marginTop: 4, fontSize: 12 }}>{card.summary}</div>}
+    </div>
+  );
+}
+
 function labelFor(state: string, detail: string, micMode: string): string {
   switch (state) {
+    case 'executing': return detail ? `working: ${detail}` : 'working…';
+    case 'needs_confirm': return 'waiting for your OK';
     case 'idle': return micMode === 'wake' ? 'say the wake word or type' : 'ready';
     case 'thinking': return 'thinking…';
     case 'speaking': return 'speaking';

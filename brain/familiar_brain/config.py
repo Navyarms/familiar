@@ -74,7 +74,7 @@ class Settings:
     custom_mmproj_gguf: str | None = None
     avatar_override: str | None = None  # absolute path to a VRM, dev convenience
     llm_threads: int | None = None
-    llm_ctx: int = 4096
+    llm_ctx: int = 8192  # tool schemas + examples take ~4k; 8k leaves room for a conversation
     thinking: bool = False
     tts_speed: float | None = None
     # voice in
@@ -85,6 +85,11 @@ class Settings:
     vad_threshold: float = 0.5
     kws_threshold: float = 0.25
     stt_threads: int | None = None  # None = min(8, physical cores / 2)
+    # tools
+    tool_permissions: dict = field(default_factory=dict)  # {"write_file": "auto", "group:shell": "confirm"}
+    file_roots: list = field(default_factory=list)  # extra folders the file tools may use
+    web_enabled: bool = True
+    confirm_timeout_s: float = 90.0
     extra: dict = field(default_factory=dict)
 
     @staticmethod

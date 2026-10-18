@@ -29,8 +29,10 @@ def test_wake_regex_strip():
     cfg = PipelineConfig(wake_phrases=["hey wisp"])
     p = VoicePipeline.__new__(VoicePipeline)
     p.cfg = cfg
-    p._wake_re = re.compile(r"^\W*(?:hey wisp|wisp)\b[\s,.!?]*", re.I)
+    phrases = [r"\W*".join(re.escape(w) for w in q.split()) for q in cfg.wake_phrases]
+    p._wake_re = re.compile(r"^\W*(?:" + "|".join(phrases + ["wisp"]) + r")\b[\s,.!?]*", re.I)
     assert p._strip_wake("Hey Wisp, what time is it?") == "what time is it?"
+    assert p._strip_wake("Hey, Wisp, find the PDF.") == "find the PDF."
     assert p._strip_wake("wisp open spotify") == "open spotify"
     assert p._strip_wake("what time is it") == "what time is it"
     assert p._strip_wake("Hey Wisp") == "Hey Wisp"  # never strip to empty

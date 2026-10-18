@@ -76,6 +76,7 @@ async def main() -> None:
     ap.add_argument("--in", dest="inp", default="CABLE Output")
     ap.add_argument("--q1", default="Hey Wisp, what is the capital of France?")
     ap.add_argument("--q2", default="And what about Japan?")
+    ap.add_argument("--no-barge", action="store_true", help="let the first reply finish, then wake again for q2 (no barge-in)")
     a = ap.parse_args()
     dev_out = out_candidates(a.out)
     print("playing into", [sd.query_devices(i)["name"] for i in dev_out], "| brain captures from", a.inp)
@@ -140,16 +141,32 @@ async def main() -> None:
                         await ws.send(json.dumps({"type": "playback", "speaking": True}))  # what the shell would do
 
                         async def barge():
-                            await asyncio.sleep(1.5)
                             nonlocal phase
+                            if a.no_barge:
+                                return
+                            await asyncio.sleep(1.5)
                             phase = "barge"
                             log(">>> playing barge-in: 'Hey Wisp'")
                             au, sr = tts("Hey Wisp.")
                             await play(au, sr, dev_out)
 
                         asyncio.create_task(barge())
+                elif t == "tool.start":
+                    log(f"TOOL {m['tool']} {json.dumps(m['args'])}")
+                elif t == "tool.result":
+                    log(f"RESULT {m['tool']} ok={m['ok']}: {m['summary'][:120]}")
+                elif t == "tool.request_confirm":
+                    log(f"CONFIRM? {m['tool']} {m['args']} -> answering 'yes' by voice")
+                    au, sr = tts("Yes, go ahead.")
+                    asyncio.create_task(play(au, sr, dev_out))
                 elif t == "reply.done":
                     log(f"reply.done interrupted={m['interrupted']} text={m['text'][:80]!r}")
+                    if a.no_barge and phase == "q1" and not m["interrupted"] and not str(m.get("turn_id", "")).startswith("announce"):
+                        await ws.send(json.dumps({"type": "playback", "speaking": False}))
+                        phase = "barge"  # reuse the state machine: next 'listening' starts q2
+                        log(">>> playing wake for q2: 'Hey Wisp'")
+                        au, sr = tts("Hey Wisp.")
+                        asyncio.create_task(play(au, sr, dev_out))
                     if phase in ("barge", "q2") and m["interrupted"] and results["barge_in"] is None:
                         results["barge_in"] = round(time.time() - t0, 2)
                         await ws.send(json.dumps({"type": "playback", "speaking": False}))

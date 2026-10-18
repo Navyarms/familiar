@@ -109,6 +109,32 @@ class ToolRequestConfirmMsg(_Msg):
     risk: Literal["low", "medium", "high"]
 
 
+class ToolStartMsg(_Msg):
+    """A tool is about to run (after confirmation if needed)."""
+
+    type: Literal["tool.start"] = "tool.start"
+    request_id: str
+    tool: str
+    args: dict
+    description: str
+
+
+class ToolInfo(_Msg):
+    name: str
+    group: str
+    description: str
+    permission: Literal["auto", "confirm", "blocked"]
+    default_permission: Literal["auto", "confirm", "blocked"]
+    risk: Literal["low", "medium", "high"]
+
+
+class ToolsInfoMsg(_Msg):
+    """Registered tools with their effective permission. Sent on connect and after settings changes."""
+
+    type: Literal["tools.info"] = "tools.info"
+    tools: list[ToolInfo]
+
+
 class ToolResultMsg(_Msg):
     type: Literal["tool.result"] = "tool.result"
     request_id: str
@@ -238,6 +264,8 @@ BrainMessage = Annotated[
     | ReplyDoneMsg
     | ExpressionMsg
     | ToolRequestConfirmMsg
+    | ToolStartMsg
+    | ToolsInfoMsg
     | ToolResultMsg
     | ModelDownloadProgressMsg
     | ModelReadyMsg

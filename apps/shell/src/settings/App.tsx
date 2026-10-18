@@ -9,6 +9,7 @@ export function App() {
   const [status, setStatus] = useState<any>(null);
   const [progress, setProgress] = useState<any>(null);
   const [errors, setErrors] = useState<string[]>([]);
+  const [tools, setTools] = useState<any[]>([]);
 
   useEffect(() => {
     window.familiar.snapshot().then((s: any) => {
@@ -25,6 +26,7 @@ export function App() {
       if (m.type === 'model.download_progress') setProgress(m);
       if (m.type === 'model.ready') setProgress(null);
       if (m.type === 'error') setErrors((xs) => [...xs.slice(-4), `${m.code}: ${m.message}`]);
+      if (m.type === 'tools.info') setTools(m.tools);
     });
     const offS = window.familiar.brain.onStatus(setStatus);
     return () => {
@@ -88,6 +90,21 @@ export function App() {
         )}
       </div>
 
+      <h2>Tool permissions</h2>
+      <div className="card">
+        <p className="muted" style={{ marginTop: 0 }}>
+          <strong>auto</strong> runs without asking, <strong>confirm</strong> shows a card (and asks aloud) first, <strong>blocked</strong> hides the tool from Wisp.
+          Kill switch <code>{snap?.hotkeys.kill}</code> stops any running action.
+        </p>
+        {tools.length === 0 ? <span className="muted">waiting for the brain…</span> : (
+          <table className="perm-table">
+            <tbody>
+              {groupBy(tools).map(([group, items]) => <GroupRows key={group} group={group} items={items} all={tools} />)}
+            </tbody>
+          </table>
+        )}
+      </div>
+
       {errors.length > 0 && (
         <>
           <h2>Recent errors</h2>
@@ -102,6 +119,44 @@ export function App() {
         <code>barge_in_vad</code> (interrupt on any speech; for headsets) (UI for these comes in Phase 6).
       </div>
     </div>
+  );
+}
+
+function groupBy(tools: any[]): [string, any[]][] {
+  const m = new Map<string, any[]>();
+  for (const t of tools) m.set(t.group, [...(m.get(t.group) ?? []), t]);
+  return [...m.entries()];
+}
+
+/** The brain stores the whole override map, so rebuild it from every tool that differs from its default plus this change. */
+function overrides(all: any[], name: string, permission: string): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const t of all) if (t.permission !== t.default_permission) out[t.name] = t.permission;
+  const def = all.find((t) => t.name === name)?.default_permission;
+  if (permission === def) delete out[name];
+  else out[name] = permission;
+  return out;
+}
+
+function GroupRows({ group, items, all }: { group: string; items: any[]; all: any[] }) {
+  return (
+    <>
+      <tr><td colSpan={3} style={{ paddingTop: 10, color: 'var(--fg-dim)', textTransform: 'uppercase', fontSize: 11, letterSpacing: '.06em' }}>{group}</td></tr>
+      {items.map((t) => (
+        <tr key={t.name}>
+          <td style={{ width: 150 }}><code>{t.name}</code></td>
+          <td className="muted">{t.description}</td>
+          <td style={{ width: 110, textAlign: 'right' }}>
+            <select value={t.permission} className={t.permission !== t.default_permission ? 'changed' : ''}
+                    onChange={(e) => window.familiar.brain.send({ type: 'settings.update', settings: { tool_permissions: overrides(all, t.name, e.target.value) } })}>
+              <option value="auto">auto</option>
+              <option value="confirm">confirm</option>
+              <option value="blocked">blocked</option>
+            </select>
+          </td>
+        </tr>
+      ))}
+    </>
   );
 }
 

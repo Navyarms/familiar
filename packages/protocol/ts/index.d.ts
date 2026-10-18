@@ -15,6 +15,8 @@ export type Brain =
   | ReplyDoneMsg
   | ExpressionMsg
   | ToolRequestConfirmMsg
+  | ToolStartMsg
+  | ToolsInfoMsg
   | ToolResultMsg
   | ModelDownloadProgressMsg
   | ModelReadyMsg
@@ -91,37 +93,49 @@ export type RequestId = string;
 export type Tool = string;
 export type Description = string;
 export type Risk = "low" | "medium" | "high";
-export type Type9 = "tool.result";
+export type Type9 = "tool.start";
 export type RequestId1 = string;
 export type Tool1 = string;
+export type Description1 = string;
+export type Type10 = "tools.info";
+export type Name1 = string;
+export type Group = string;
+export type Description2 = string;
+export type Permission = "auto" | "confirm" | "blocked";
+export type DefaultPermission = "auto" | "confirm" | "blocked";
+export type Risk1 = "low" | "medium" | "high";
+export type Tools = ToolInfo[];
+export type Type11 = "tool.result";
+export type RequestId2 = string;
+export type Tool2 = string;
 export type Ok = boolean;
 export type Summary = string;
-export type Type10 = "model.download_progress";
+export type Type12 = "model.download_progress";
 export type Item = string;
 export type BytesDone = number;
 export type BytesTotal = number;
 export type SpeedBps = number;
 export type OverallDone = number;
 export type OverallTotal = number;
-export type Type11 = "model.ready";
+export type Type13 = "model.ready";
 export type Tier = string;
 export type ChatModel = string;
 export type TtsModel = string;
-export type Type12 = "models.info";
+export type Type14 = "models.info";
 export type Tier1 = string;
 export type TierReason = string;
-export type Name1 = string;
+export type Name2 = string;
 export type BytesTotal1 = number;
 export type Present = boolean;
 export type Required = ModelItemInfo[];
-export type Type13 = "mic.state";
+export type Type15 = "mic.state";
 export type Mode = "off" | "idle" | "wake" | "listening" | "processing";
 export type Level = number;
 /**
  * wake | ptt | voice | no speech | nothing heard | cancelled
  */
 export type Reason = string;
-export type Type14 = "error";
+export type Type16 = "error";
 export type Code = string;
 export type Message = string;
 export type Fatal = boolean;
@@ -138,24 +152,24 @@ export type Shell =
   | KillSwitchMsg
   | PlaybackMsg
   | DownloadStartMsg;
-export type Type15 = "summon";
-export type Type16 = "ptt.start";
-export type Type17 = "ptt.stop";
-export type Type18 = "text.send";
+export type Type17 = "summon";
+export type Type18 = "ptt.start";
+export type Type19 = "ptt.stop";
+export type Type20 = "text.send";
 export type Text5 = string;
 export type Speak = boolean;
-export type Type19 = "interrupt";
-export type Type20 = "tool.confirm";
-export type RequestId2 = string;
-export type Type21 = "tool.deny";
+export type Type21 = "interrupt";
+export type Type22 = "tool.confirm";
 export type RequestId3 = string;
-export type Type22 = "persona.switch";
+export type Type23 = "tool.deny";
+export type RequestId4 = string;
+export type Type24 = "persona.switch";
 export type PersonaId = string;
-export type Type23 = "settings.update";
-export type Type24 = "kill_switch";
-export type Type25 = "playback";
+export type Type25 = "settings.update";
+export type Type26 = "kill_switch";
+export type Type27 = "playback";
 export type Speaking = boolean;
-export type Type26 = "models.download";
+export type Type28 = "models.download";
 
 /**
  * Only used to emit one combined JSON schema with both directions.
@@ -308,13 +322,51 @@ export interface Args {
   [k: string]: unknown;
 }
 /**
+ * A tool is about to run (after confirmation if needed).
+ *
+ * This interface was referenced by `FamiliarProtocol`'s JSON-Schema
+ * via the `definition` "ToolStartMsg".
+ */
+export interface ToolStartMsg {
+  type?: Type9;
+  request_id: RequestId1;
+  tool: Tool1;
+  args: Args1;
+  description: Description1;
+}
+export interface Args1 {
+  [k: string]: unknown;
+}
+/**
+ * Registered tools with their effective permission. Sent on connect and after settings changes.
+ *
+ * This interface was referenced by `FamiliarProtocol`'s JSON-Schema
+ * via the `definition` "ToolsInfoMsg".
+ */
+export interface ToolsInfoMsg {
+  type?: Type10;
+  tools: Tools;
+}
+/**
+ * This interface was referenced by `FamiliarProtocol`'s JSON-Schema
+ * via the `definition` "ToolInfo".
+ */
+export interface ToolInfo {
+  name: Name1;
+  group: Group;
+  description: Description2;
+  permission: Permission;
+  default_permission: DefaultPermission;
+  risk: Risk1;
+}
+/**
  * This interface was referenced by `FamiliarProtocol`'s JSON-Schema
  * via the `definition` "ToolResultMsg".
  */
 export interface ToolResultMsg {
-  type?: Type9;
-  request_id: RequestId1;
-  tool: Tool1;
+  type?: Type11;
+  request_id: RequestId2;
+  tool: Tool2;
   ok: Ok;
   summary: Summary;
 }
@@ -323,7 +375,7 @@ export interface ToolResultMsg {
  * via the `definition` "ModelDownloadProgressMsg".
  */
 export interface ModelDownloadProgressMsg {
-  type?: Type10;
+  type?: Type12;
   item: Item;
   bytes_done: BytesDone;
   bytes_total: BytesTotal;
@@ -336,7 +388,7 @@ export interface ModelDownloadProgressMsg {
  * via the `definition` "ModelReadyMsg".
  */
 export interface ModelReadyMsg {
-  type?: Type11;
+  type?: Type13;
   tier: Tier;
   chat_model: ChatModel;
   tts_model: TtsModel;
@@ -348,7 +400,7 @@ export interface ModelReadyMsg {
  * via the `definition` "ModelsInfoMsg".
  */
 export interface ModelsInfoMsg {
-  type?: Type12;
+  type?: Type14;
   tier: Tier1;
   tier_reason: TierReason;
   hardware: Hardware;
@@ -362,7 +414,7 @@ export interface Hardware {
  * via the `definition` "ModelItemInfo".
  */
 export interface ModelItemInfo {
-  name: Name1;
+  name: Name2;
   bytes_total: BytesTotal1;
   present: Present;
 }
@@ -373,7 +425,7 @@ export interface ModelItemInfo {
  * via the `definition` "MicStateMsg".
  */
 export interface MicStateMsg {
-  type?: Type13;
+  type?: Type15;
   mode: Mode;
   level?: Level;
   reason?: Reason;
@@ -383,7 +435,7 @@ export interface MicStateMsg {
  * via the `definition` "ErrorMsg".
  */
 export interface ErrorMsg {
-  type?: Type14;
+  type?: Type16;
   code: Code;
   message: Message;
   fatal?: Fatal;
@@ -393,28 +445,28 @@ export interface ErrorMsg {
  * via the `definition` "SummonMsg".
  */
 export interface SummonMsg {
-  type?: Type15;
+  type?: Type17;
 }
 /**
  * This interface was referenced by `FamiliarProtocol`'s JSON-Schema
  * via the `definition` "PttStartMsg".
  */
 export interface PttStartMsg {
-  type?: Type16;
+  type?: Type18;
 }
 /**
  * This interface was referenced by `FamiliarProtocol`'s JSON-Schema
  * via the `definition` "PttStopMsg".
  */
 export interface PttStopMsg {
-  type?: Type17;
+  type?: Type19;
 }
 /**
  * This interface was referenced by `FamiliarProtocol`'s JSON-Schema
  * via the `definition` "TextSendMsg".
  */
 export interface TextSendMsg {
-  type?: Type18;
+  type?: Type20;
   text: Text5;
   speak?: Speak;
 }
@@ -423,30 +475,30 @@ export interface TextSendMsg {
  * via the `definition` "InterruptMsg".
  */
 export interface InterruptMsg {
-  type?: Type19;
+  type?: Type21;
 }
 /**
  * This interface was referenced by `FamiliarProtocol`'s JSON-Schema
  * via the `definition` "ToolConfirmMsg".
  */
 export interface ToolConfirmMsg {
-  type?: Type20;
-  request_id: RequestId2;
+  type?: Type22;
+  request_id: RequestId3;
 }
 /**
  * This interface was referenced by `FamiliarProtocol`'s JSON-Schema
  * via the `definition` "ToolDenyMsg".
  */
 export interface ToolDenyMsg {
-  type?: Type21;
-  request_id: RequestId3;
+  type?: Type23;
+  request_id: RequestId4;
 }
 /**
  * This interface was referenced by `FamiliarProtocol`'s JSON-Schema
  * via the `definition` "PersonaSwitchMsg".
  */
 export interface PersonaSwitchMsg {
-  type?: Type22;
+  type?: Type24;
   persona_id: PersonaId;
 }
 /**
@@ -454,7 +506,7 @@ export interface PersonaSwitchMsg {
  * via the `definition` "SettingsUpdateMsg".
  */
 export interface SettingsUpdateMsg {
-  type?: Type23;
+  type?: Type25;
   settings: Settings;
 }
 export interface Settings {
@@ -465,7 +517,7 @@ export interface Settings {
  * via the `definition` "KillSwitchMsg".
  */
 export interface KillSwitchMsg {
-  type?: Type24;
+  type?: Type26;
 }
 /**
  * Shell tells the brain whether reply audio is currently playing (for barge-in and the speaking state).
@@ -474,7 +526,7 @@ export interface KillSwitchMsg {
  * via the `definition` "PlaybackMsg".
  */
 export interface PlaybackMsg {
-  type?: Type25;
+  type?: Type27;
   speaking: Speaking;
 }
 /**
@@ -484,5 +536,5 @@ export interface PlaybackMsg {
  * via the `definition` "DownloadStartMsg".
  */
 export interface DownloadStartMsg {
-  type?: Type26;
+  type?: Type28;
 }

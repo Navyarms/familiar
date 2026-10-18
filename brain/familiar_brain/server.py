@@ -5,12 +5,13 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import re
 import time
 
 from familiar_protocol import parse_shell_message
 from fastapi import FastAPI, Query, WebSocket, WebSocketDisconnect
 
-from .agent.turn import Turn, build_system_prompt
+from .agent.turn import FEW_SHOT, Turn, build_system_prompt
 from .audio import FileSource, MicSource
 from .audio.pipeline import PipelineConfig, VoicePipeline
 from .audio.stt import WhisperSTT, default_stt_threads
@@ -20,6 +21,8 @@ from .config import BRAIN_VERSION, Paths, Settings
 from .llm import LlamaServer, LlmClient, default_threads
 from .models import ModelManager
 from .persona import Persona, list_personas, load_persona
+from .tools import REGISTRY, ToolContext
+from .tools.memory import MemoryStore
 from .tts import KokoroTTS
 
 log = logging.getLogger(__name__)
@@ -42,6 +45,15 @@ class Brain:
         self.ready = False
         self.voice: VoicePipeline | None = None
         self.mic_file: str | None = None  # dev: feed a wav instead of the microphone
+        # tools
+        self.registry = REGISTRY
+        self.registry.configure(settings)
+        self.kill_event = asyncio.Event()
+        self.pending_confirms: dict[str, asyncio.Future] = {}
+        self.memory = MemoryStore(paths.home / "memory.sqlite")
+        self.tool_ctx: ToolContext | None = None
+        self._announce_n = 0
+        self._announce_queue: list[str] = []
 
     # ------------------------------------------------------------ messaging
     async def send(self, msg: dict) -> None:
@@ -73,6 +85,76 @@ class Brain:
         return {"type": "hello", "protocol": 1, "brain_version": BRAIN_VERSION,
                 "persona": self.persona.info() if self.persona else None}
 
+    def tools_info(self) -> dict:
+        return {"type": "tools.info", "tools": self.registry.info()}
+
+    def _ctx(self) -> ToolContext:
+        if self.tool_ctx is None:
+            self.tool_ctx = ToolContext(paths=self.paths, settings=self.settings, send=self.send, announce=self.announce,
+                                        loop=asyncio.get_running_loop(), kill=self.kill_event,
+                                        extra={"memory": self.memory, "brain": self})
+        return self.tool_ctx
+
+    async def confirm(self, request_id: str, tool: str, args: dict, description: str, risk: str) -> bool:
+        """Wait for tool.confirm / tool.deny from the shell (or a spoken yes/no). Times out as a deny."""
+        fut: asyncio.Future = asyncio.get_running_loop().create_future()
+        self.pending_confirms[request_id] = fut
+        try:
+            return bool(await asyncio.wait_for(fut, timeout=self.settings.confirm_timeout_s))
+        except TimeoutError:
+            return False
+        finally:
+            self.pending_confirms.pop(request_id, None)
+
+    def resolve_confirm(self, request_id: str | None, allowed: bool) -> bool:
+        """Resolve one pending confirmation (None = the oldest). Returns whether anything was pending."""
+        if not self.pending_confirms:
+            return False
+        rid = request_id if request_id in self.pending_confirms else next(iter(self.pending_confirms))
+        fut = self.pending_confirms.get(rid)
+        if fut and not fut.done():
+            fut.set_result(allowed)
+        return True
+
+    async def announce(self, text: str) -> None:
+        """Say something unprompted (timer fired). Queued while a turn is running; goes out as a tiny turn otherwise."""
+        if self.turn_task and not self.turn_task.done():
+            self._announce_queue.append(text)
+            return
+        await self._announce_now(text)
+
+    async def _flush_announcements(self) -> None:
+        while self._announce_queue and not (self.turn_task and not self.turn_task.done()):
+            await self._announce_now(self._announce_queue.pop(0))
+
+    async def _announce_now(self, text: str) -> None:
+        self._announce_n += 1
+        tid = f"announce{self._announce_n}"
+        await self.send({"type": "reply.token", "turn_id": tid, "text": text})
+        if self.tts:
+            try:
+                syn = await self.tts.synth(text, self.persona.voice, self.persona.voice_speed)
+                await self.send({"type": "reply.audio", "turn_id": tid, "sentence_id": 1, "text": text, "sample_rate": syn.sample_rate,
+                                 "pcm16_b64": syn.pcm16_b64(), "duration_s": round(syn.duration_s, 3), "envelope_hz": 50,
+                                 "envelope": syn.envelope, "visemes": syn.visemes})
+            except Exception:
+                log.exception("announce tts failed")
+        self.history.append({"role": "assistant", "content": text})
+        await self.send({"type": "reply.done", "turn_id": tid, "text": text, "interrupted": False, "stats": {}})
+
+    async def kill(self) -> None:
+        """Kill switch: stop the current turn, deny every pending confirmation, cancel what we can."""
+        log.warning("KILL SWITCH")
+        self.kill_event.set()
+        for rid in list(self.pending_confirms):
+            self.resolve_confirm(rid, False)
+        await self.interrupt()
+        self.kill_event = asyncio.Event()
+        if self.tool_ctx:
+            self.tool_ctx.kill = self.kill_event
+        await self.send({"type": "tool.result", "request_id": "kill", "tool": "kill_switch", "ok": True, "summary": "stopped everything"})
+        await self.set_state("idle")
+
     def models_info(self) -> dict:
         return {"type": "models.info", "tier": self.models.tier, "tier_reason": self.models.tier_reason,
                 "hardware": self.models.hw.as_dict(), "required": self.models.status()}
@@ -87,6 +169,7 @@ class Brain:
             return
         await self.send(self.hello())
         await self.send(self.models_info())
+        await self.send(self.tools_info())
         if self.models.missing():
             await self.set_state("downloading", "waiting for the shell to start the download")
             return  # shell sends models.download when the user confirms
@@ -144,10 +227,7 @@ class Brain:
             await self.send({"type": "error", "code": "tts", "message": f"voice unavailable: {e}", "fatal": False})
             self.tts = None
         await self.set_state("booting", "warming up")
-        try:
-            await self.llm.warm([{"role": "system", "content": build_system_prompt(self.persona)}])
-        except Exception as e:
-            log.warning("warm-up failed: %s", e)
+        await self.warm()
         self.ready = True
         await self.send({"type": "model.ready", "tier": self.models.tier, "chat_model": self.models.chat_model_path().name,
                          "tts_model": "kokoro-v1.0" if self.tts else "none"})
@@ -158,8 +238,10 @@ class Brain:
     async def start_voice(self) -> None:
         """Mic -> VAD/wake word -> STT. Failures here are not fatal: text chat keeps working."""
         await self.stop_voice()
+        quiet = self.state not in ("idle", "booting")  # a turn is running: do not stomp its state
         try:
-            await self.set_state("booting", "loading speech recognition")
+            if not quiet:
+                await self.set_state("booting", "loading speech recognition")
             loop = asyncio.get_running_loop()
             source = FileSource(loop, self.mic_file, realtime=True) if self.mic_file else MicSource(loop, self.settings.mic_device)
             vad = SileroVAD(self.models.vad_path(), threshold=self.settings.vad_threshold)
@@ -183,7 +265,7 @@ class Brain:
             self.voice = None
             await self.send({"type": "error", "code": "voice", "message": f"microphone unavailable: {e}", "fatal": False})
         finally:
-            if self.state == "booting":
+            if self.state == "booting" and not quiet:
                 await self.set_state("idle")
 
     async def stop_voice(self) -> None:
@@ -191,13 +273,36 @@ class Brain:
             v, self.voice = self.voice, None
             await v.stop()
 
+    YES = re.compile(r"^\W*(yes|yeah|yep|yup|sure|ok|okay|do it|go ahead|go for it|please do|confirm|affirmative)\b", re.I)
+    NO = re.compile(r"^\W*(no|nope|nah|don't|do not|cancel|stop|never ?mind|negative)\b", re.I)
+
     async def _on_utterance(self, text: str, reason: str) -> None:
+        if self.pending_confirms:
+            if self.YES.match(text):
+                await self.send({"type": "transcript.final", "text": text})
+                self.resolve_confirm(None, True)
+                return
+            if self.NO.match(text):
+                await self.send({"type": "transcript.final", "text": text})
+                self.resolve_confirm(None, False)
+                return
         await self.handle_text(text, speak=True)
 
     async def _on_barge_in(self) -> None:
         log.info("barge-in: interrupting current turn")
         await self.interrupt()
         await self.set_state("idle")
+
+    async def warm(self) -> None:
+        if not self.llm:
+            return
+        try:
+            use_tools = bool(self.registry.available())
+            await self.llm.warm([{"role": "system", "content": build_system_prompt(self.persona, tools=use_tools)},
+                                 *(FEW_SHOT if use_tools else [])],
+                                tools=self.registry.openai_tools() if use_tools else None)
+        except Exception as e:
+            log.warning("warm-up failed: %s", e)
 
     async def shutdown(self) -> None:
         await self.stop_voice()
@@ -213,7 +318,8 @@ class Brain:
             await self.send({"type": "error", "code": "not_ready", "message": "still starting up", "fatal": False})
             return
         await self.interrupt()
-        turn = Turn(llm=self.llm, tts=self.tts, persona=self.persona, history=self.history, send=self.send, speak=speak)
+        turn = Turn(llm=self.llm, tts=self.tts, persona=self.persona, history=self.history, send=self.send, speak=speak,
+                    registry=self.registry, ctx=self._ctx(), confirm=self.confirm, memories=self.memory.recent())
         await self.send({"type": "transcript.final", "text": text})
 
         async def _run():
@@ -227,6 +333,8 @@ class Brain:
             finally:
                 if self.state != "error":
                     await self.set_state("idle")
+                self.turn_task = None
+                await self._flush_announcements()
 
         self.turn_task = asyncio.create_task(_run())
 
@@ -250,11 +358,7 @@ class Brain:
         self.settings.save(self.paths.settings_file)
         self.history.clear()
         await self.send(self.hello())
-        if self.llm:
-            try:
-                await self.llm.warm([{"role": "system", "content": build_system_prompt(self.persona)}])
-            except Exception as e:
-                log.warning("warm-up failed: %s", e)
+        await self.warm()
 
     # ------------------------------------------------------------ dispatch
     async def dispatch(self, raw: str) -> None:
@@ -266,9 +370,15 @@ class Brain:
         t = msg.type
         if t == "text.send":
             await self.handle_text(msg.text, msg.speak)
-        elif t == "interrupt" or t == "kill_switch":
+        elif t == "interrupt":
             await self.interrupt()
             await self.set_state("idle")
+        elif t == "kill_switch":
+            await self.kill()
+        elif t == "tool.confirm":
+            self.resolve_confirm(msg.request_id, True)
+        elif t == "tool.deny":
+            self.resolve_confirm(msg.request_id, False)
         elif t == "models.download":
             await self.download_then_start()
         elif t == "persona.switch":
@@ -276,6 +386,10 @@ class Brain:
         elif t == "settings.update":
             self.settings.update(msg.settings)
             self.settings.save(self.paths.settings_file)
+            if any(k in msg.settings for k in ("tool_permissions", "web_enabled", "file_roots")):
+                self.registry.configure(self.settings)
+                await self.send(self.tools_info())
+                await self.warm()
             voice_keys = ("voice_enabled", "mic_device", "wake_word", "barge_in_vad", "vad_threshold", "kws_threshold")
             if self.ready and any(k in msg.settings for k in voice_keys):
                 if self.settings.voice_enabled:
@@ -332,6 +446,7 @@ def create_app(brain: Brain, token: str) -> FastAPI:
         try:
             await sock.send_text(json.dumps(brain.hello()))
             await sock.send_text(json.dumps(brain.models_info()))
+            await sock.send_text(json.dumps(brain.tools_info()))
             await sock.send_text(json.dumps({"type": "state", "state": brain.state}))
             while True:
                 raw = await sock.receive_text()

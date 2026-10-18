@@ -70,8 +70,10 @@ class VoicePipeline:
         self._final_t = 0.0
         self._reason = ""
         self._speech_run_s = 0.0
-        self._wake_re = re.compile(r"^\W*(?:" + "|".join(re.escape(p) for p in config.wake_phrases) + r"|" +
-                                   "|".join(re.escape(p.split()[-1]) for p in config.wake_phrases) + r")\b[\s,.!?]*", re.I)
+        # "hey wisp" may come back from STT as "Hey, Wisp," or "Hey Wisp." -> allow punctuation between the words
+        phrases = [r"\W*".join(re.escape(w) for w in p.split()) for p in config.wake_phrases]
+        lasts = [re.escape(p.split()[-1]) for p in config.wake_phrases]
+        self._wake_re = re.compile(r"^\W*(?:" + "|".join(phrases + lasts) + r")\b[\s,.!?]*", re.I)
 
     # ------------------------------------------------------------------ lifecycle
     async def start(self) -> None:

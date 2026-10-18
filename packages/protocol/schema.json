@@ -735,6 +735,60 @@
       "title": "ToolDenyMsg",
       "type": "object"
     },
+    "ToolInfo": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "group": {
+          "title": "Group",
+          "type": "string"
+        },
+        "description": {
+          "title": "Description",
+          "type": "string"
+        },
+        "permission": {
+          "enum": [
+            "auto",
+            "confirm",
+            "blocked"
+          ],
+          "title": "Permission",
+          "type": "string"
+        },
+        "default_permission": {
+          "enum": [
+            "auto",
+            "confirm",
+            "blocked"
+          ],
+          "title": "Default Permission",
+          "type": "string"
+        },
+        "risk": {
+          "enum": [
+            "low",
+            "medium",
+            "high"
+          ],
+          "title": "Risk",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "group",
+        "description",
+        "permission",
+        "default_permission",
+        "risk"
+      ],
+      "title": "ToolInfo",
+      "type": "object"
+    },
     "ToolRequestConfirmMsg": {
       "additionalProperties": false,
       "properties": {
@@ -814,6 +868,67 @@
         "summary"
       ],
       "title": "ToolResultMsg",
+      "type": "object"
+    },
+    "ToolStartMsg": {
+      "additionalProperties": false,
+      "description": "A tool is about to run (after confirmation if needed).",
+      "properties": {
+        "type": {
+          "const": "tool.start",
+          "default": "tool.start",
+          "title": "Type",
+          "type": "string"
+        },
+        "request_id": {
+          "title": "Request Id",
+          "type": "string"
+        },
+        "tool": {
+          "title": "Tool",
+          "type": "string"
+        },
+        "args": {
+          "additionalProperties": true,
+          "title": "Args",
+          "type": "object"
+        },
+        "description": {
+          "title": "Description",
+          "type": "string"
+        }
+      },
+      "required": [
+        "request_id",
+        "tool",
+        "args",
+        "description"
+      ],
+      "title": "ToolStartMsg",
+      "type": "object"
+    },
+    "ToolsInfoMsg": {
+      "additionalProperties": false,
+      "description": "Registered tools with their effective permission. Sent on connect and after settings changes.",
+      "properties": {
+        "type": {
+          "const": "tools.info",
+          "default": "tools.info",
+          "title": "Type",
+          "type": "string"
+        },
+        "tools": {
+          "items": {
+            "$ref": "#/$defs/ToolInfo"
+          },
+          "title": "Tools",
+          "type": "array"
+        }
+      },
+      "required": [
+        "tools"
+      ],
+      "title": "ToolsInfoMsg",
       "type": "object"
     },
     "TranscriptFinalMsg": {
@@ -903,6 +1018,8 @@
           "state": "#/$defs/StateMsg",
           "tool.request_confirm": "#/$defs/ToolRequestConfirmMsg",
           "tool.result": "#/$defs/ToolResultMsg",
+          "tool.start": "#/$defs/ToolStartMsg",
+          "tools.info": "#/$defs/ToolsInfoMsg",
           "transcript.final": "#/$defs/TranscriptFinalMsg",
           "transcript.partial": "#/$defs/TranscriptPartialMsg"
         },
@@ -935,6 +1052,12 @@
         },
         {
           "$ref": "#/$defs/ToolRequestConfirmMsg"
+        },
+        {
+          "$ref": "#/$defs/ToolStartMsg"
+        },
+        {
+          "$ref": "#/$defs/ToolsInfoMsg"
         },
         {
           "$ref": "#/$defs/ToolResultMsg"

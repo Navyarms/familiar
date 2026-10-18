@@ -73,6 +73,8 @@ window.familiar.brain.onMessage((msg: any) => {
       break;
     case 'state':
       if (msg.state === 'thinking' || msg.state === 'listening') avatar.state = msg.state;
+      else if (msg.state === 'executing') { avatar.state = 'thinking'; if (msg.detail) showBadge(msg.detail, 3000); }
+      else if (msg.state === 'needs_confirm') { avatar.setExpression('surprised'); if (msg.detail) showBadge(`OK to ${msg.detail}?`, 6000); }
       else if (msg.state === 'idle' && avatar.state !== 'speaking' && micMode !== 'listening') avatar.state = 'idle';
       else if (msg.state === 'booting' || msg.state === 'downloading') {
         avatar.state = 'booting';

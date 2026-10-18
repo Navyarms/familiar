@@ -5,7 +5,7 @@ answer questions or operate your PC, and hear it reply through a locally rendere
 Everything runs on-device. The app ships as a single installer anyone can use, and the character,
 voice, and personality live in swappable **persona packs**.
 
-> Status: Phases 0–2 done from source (spikes, core loop, voice in). Notes per phase in docs/. Next: Phase 3 (safe tools).
+> Status: Phases 0–3 done from source (spikes, core loop, voice in, safe tools). Notes per phase in docs/. Next: Phase 4 (full desktop automation).
 > Next step is Phase 1 (core loop). Nothing committed yet.
 
 ---
@@ -264,9 +264,9 @@ Throwaway prototypes that answer the questions the architecture depends on.
 - **Exit:** hands-free conversation for 10 minutes without a false wake or a missed wake in a quiet room — *verified synthetically (virtual-cable loopback, see docs/phase2-voice-in.md); the human 10-minute session is still to do*
 
 ### Phase 3 — Safe tools
-- [ ] Tool registry, permission levels, confirmation cards, kill switch
-- [ ] system, windows, files, web, clipboard, timers, memory tools
-- **Exit:** "open Spotify and turn the volume to 30" and "find the PDF I downloaded yesterday" work by voice
+- [x] Tool registry, permission levels, confirmation cards, kill switch
+- [x] system, windows, files, web, clipboard, timers, memory tools (+ weather; shell blocked by default)
+- **Exit:** "open Spotify and turn the volume to 30" and "find the PDF I downloaded yesterday" work by voice — *verified through the virtual-cable loopback with Notepad standing in for Spotify (docs/phase3-safe-tools.md)*
 
 ### Phase 4 — Full desktop automation
 - [ ] input tools (type, hotkeys, click, scroll, drag) with interference guard

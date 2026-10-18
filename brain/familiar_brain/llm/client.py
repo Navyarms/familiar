@@ -1,4 +1,4 @@
-"""Streaming client for llama-server's OpenAI-compatible chat endpoint."""
+"""Streaming client for llama-server's OpenAI-compatible chat endpoint, with tool-call assembly."""
 
 from __future__ import annotations
 
@@ -14,6 +14,27 @@ log = logging.getLogger(__name__)
 
 
 @dataclass
+class ToolCall:
+    id: str
+    name: str
+    arguments: str  # raw JSON string as produced by the model
+
+    def args(self) -> dict:
+        if not self.arguments.strip():
+            return {}
+        try:
+            v = json.loads(self.arguments)
+        except json.JSONDecodeError:
+            # small models sometimes emit two objects or trailing junk; take the first object
+            dec = json.JSONDecoder()
+            v, _ = dec.raw_decode(self.arguments.strip())
+        return v if isinstance(v, dict) else {}
+
+    def openai(self) -> dict:
+        return {"id": self.id, "type": "function", "function": {"name": self.name, "arguments": self.arguments or "{}"}}
+
+
+@dataclass
 class StreamStats:
     ttft_s: float | None = None
     total_s: float = 0.0
@@ -21,7 +42,7 @@ class StreamStats:
     gen_tokens: int | None = None
     tok_s: float | None = None
     finish_reason: str | None = None
-    tool_calls: list[dict] = field(default_factory=list)
+    tool_calls: list[ToolCall] = field(default_factory=list)
 
 
 class LlmClient:
@@ -33,11 +54,13 @@ class LlmClient:
     async def aclose(self) -> None:
         await self._client.aclose()
 
-    async def warm(self, messages: list[dict]) -> float:
+    async def warm(self, messages: list[dict], tools: list[dict] | None = None) -> float:
         """Process the prefix once so the server's prompt cache holds it. Returns seconds taken."""
         t0 = time.monotonic()
         body = {"messages": messages, "max_tokens": 1, "temperature": 0, "cache_prompt": True,
                 "chat_template_kwargs": {"enable_thinking": self.thinking}}
+        if tools:
+            body["tools"] = tools
         r = await self._client.post(f"{self.base_url}/v1/chat/completions", json=body)
         r.raise_for_status()
         dt = time.monotonic() - t0
@@ -46,7 +69,7 @@ class LlmClient:
 
     async def stream(self, messages: list[dict], *, max_tokens: int = 400, temperature: float = 0.7,
                      tools: list[dict] | None = None, stats: StreamStats | None = None) -> AsyncIterator[str]:
-        """Yields content deltas. Reasoning deltas (thinking) are skipped. Fills `stats` if given."""
+        """Yields content deltas. Reasoning deltas (thinking) are skipped. Tool calls are assembled into `stats.tool_calls`."""
         stats = stats if stats is not None else StreamStats()
         body = {"messages": messages, "max_tokens": max_tokens, "temperature": temperature, "stream": True,
                 "cache_prompt": True, "stream_options": {"include_usage": True},
@@ -54,9 +77,13 @@ class LlmClient:
         if tools:
             body["tools"] = tools
             body["tool_choice"] = "auto"
+            body["parallel_tool_calls"] = True
         t0 = time.monotonic()
+        partial: dict[int, ToolCall] = {}
         async with self._client.stream("POST", f"{self.base_url}/v1/chat/completions", json=body) as r:
-            r.raise_for_status()
+            if r.status_code >= 400:
+                err = (await r.aread()).decode(errors="replace")[:500]
+                raise RuntimeError(f"llama-server {r.status_code}: {err}")
             async for line in r.aiter_lines():
                 if not line.startswith("data: "):
                     continue
@@ -73,11 +100,22 @@ class LlmClient:
                     d = ch.get("delta", {})
                     if ch.get("finish_reason"):
                         stats.finish_reason = ch["finish_reason"]
-                    if d.get("tool_calls"):
-                        stats.tool_calls.extend(d["tool_calls"])
+                    for tc in d.get("tool_calls") or []:
+                        idx = tc.get("index", 0)
+                        cur = partial.get(idx)
+                        if cur is None:
+                            cur = partial[idx] = ToolCall(id=tc.get("id") or f"call_{idx}", name="", arguments="")
+                        if tc.get("id"):
+                            cur.id = tc["id"]
+                        fn = tc.get("function") or {}
+                        if fn.get("name"):
+                            cur.name = fn["name"] if not cur.name else cur.name
+                        if fn.get("arguments"):
+                            cur.arguments += fn["arguments"]
                     content = d.get("content")
                     if content:
                         if stats.ttft_s is None:
                             stats.ttft_s = time.monotonic() - t0
                         yield content
+        stats.tool_calls = [partial[i] for i in sorted(partial)]
         stats.total_s = time.monotonic() - t0
