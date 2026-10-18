@@ -132,6 +132,13 @@ def set_volume(ctx: ToolContext, level: int):
     return {"level": level}, f"volume set to {level}%"
 
 
+@tool("get_volume", group="system", description="Read the current system volume (0-100) and whether it is muted.")
+def get_volume(ctx: ToolContext):
+    ep = _endpoint()
+    lvl, muted = round(ep.GetMasterVolumeLevelScalar() * 100), bool(ep.GetMute())
+    return {"level": lvl, "muted": muted}, f"volume is {lvl}%{' and muted' if muted else ''}"
+
+
 @tool("set_mute", group="system", description="Mute or unmute the system audio.",
       parameters=P(muted=("boolean", "true to mute, false to unmute", True)), describe=lambda a: ("mute" if a.get("muted") else "unmute") + " the audio")
 def set_mute(ctx: ToolContext, muted: bool):

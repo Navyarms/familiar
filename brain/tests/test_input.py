@@ -109,7 +109,7 @@ def test_bluetooth_read_only():
     from familiar_brain.tools import screen
 
     try:
-        res, summary = screen.set_bluetooth(_ctx())
+        res, summary = screen.set_bluetooth(_ctx(), "check")
     except RuntimeError as e:
         pytest.skip(str(e))
     assert "enabled" in res and res["changed"] is False, summary

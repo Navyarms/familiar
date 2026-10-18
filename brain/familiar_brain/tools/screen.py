@@ -12,6 +12,7 @@ from __future__ import annotations
 import io
 import logging
 import os
+import re
 import subprocess
 import time
 
@@ -259,6 +260,10 @@ def grab(window_only: bool, max_width: int) -> tuple[bytes, tuple[int, int], str
     return out.getvalue(), img.size, title
 
 
+TEXTY = re.compile(r"\b(say|says|said|read|text|dialog|message|error|warning|title|write|written|words|button|menu|label)\b", re.I)
+VISUAL = re.compile(r"\b(picture|photo|image|screenshot|look like|looks like|color|colour|drawing|chart|graph|video|game|layout|design|icon)\b", re.I)
+
+
 @tool("look_at_screen", group="screen",
       description="Look at the active window (or whole screen) with vision and answer a question about it. Slow; only when element tools cannot help.",
       parameters=P(question=("string", "What to look for, e.g. 'what does the error say?'; default = describe it", False),
@@ -270,6 +275,16 @@ async def look_at_screen(ctx: ToolContext, question: str = "", whole_screen: boo
     if llm is None:
         return {"ok": False}, "vision is not available right now"
     import asyncio
+
+    # Actions over vision: a textual question about the active window is answered through accessibility when it can be.
+    if not whole_screen and question and TEXTY.search(question) and not VISUAL.search(question):
+        try:
+            data, _s = await asyncio.to_thread(read_window_text, ctx, None, 3000)
+            if len(data.get("text", "")) >= 40:
+                return {"window": data["window"], "answer": data["text"], "via": "accessibility"}, \
+                    f"(read from {data['window']} without vision) {data['text'][:280]}"
+        except Exception as e:  # fall through to vision
+            log.debug("accessibility fast path failed: %s", e)
 
     png, size, title = await asyncio.to_thread(grab, not whole_screen, int(getattr(ctx.settings, "vision_max_width", 1024)))
     prompt = (question.strip() or "Describe what is on this screen in two sentences, then list the main clickable things you see.")
@@ -303,15 +318,17 @@ def _bluetooth_toggle(auto):
     raise RuntimeError("couldn't find the Bluetooth switch on the Settings page (is Bluetooth hardware present?)")
 
 
-@tool("set_bluetooth", group="system", description="Turn Bluetooth on or off (via the Settings page) or just check it: enabled=true/false, or omit to read the state.",
-      parameters=P(enabled=("boolean", "true = on, false = off; omit to only read", False)),
-      describe=lambda a: ("turn Bluetooth " + ("on" if a.get("enabled") else "off")) if a.get("enabled") is not None else "check Bluetooth", timeout_s=45, narrate=True)
-def set_bluetooth(ctx: ToolContext, enabled: bool | None = None):
+@tool("set_bluetooth", group="system", description="Bluetooth: check whether it is on, or turn it on or off (through the Settings page).",
+      parameters=P(action=("string", "check | on | off", ["check", "on", "off"], True)),
+      describe=lambda a: {"on": "turn Bluetooth on", "off": "turn Bluetooth off"}.get(a.get("action"), "check Bluetooth"), timeout_s=45, narrate=True)
+def set_bluetooth(ctx: ToolContext, action: str):
+    enabled = None if action == "check" else action == "on"
     auto = _auto()
     win, tog = _bluetooth_toggle(auto)
     state = bool(tog.GetTogglePattern().ToggleState)
     if enabled is None or enabled == state:
-        return {"enabled": state, "changed": False}, f"Bluetooth is already {'on' if state else 'off'}" if enabled is not None else f"Bluetooth is {'on' if state else 'off'}"
+        return {"enabled": state, "changed": False}, (f"Bluetooth is already {'on' if state else 'off'}" if enabled is not None
+                                                      else f"Bluetooth is {'on' if state else 'off'}")
     GUARD.wait_for_quiet()
     tog.GetTogglePattern().Toggle()
     for _ in range(20):

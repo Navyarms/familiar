@@ -34,9 +34,10 @@ EXPRESSION_INSTRUCTIONS = (
 )
 TOOL_INSTRUCTIONS = (
     "\n\nYou operate this Windows PC through tools. Rules:\n"
-    "1. You know nothing about this PC by yourself: not the clipboard, files, open windows, volume, battery, or anything "
-    "current on the web. To answer about any of those you MUST call the matching tool first (clipboard_read, "
-    "search_files, list_windows, get_volume, system_info, web_search). Never guess their contents.\n"
+    "1. You know nothing about this PC by yourself: not the clipboard, files, open windows, the active window, volume, "
+    "battery, Bluetooth, or anything current on the web. To answer about any of those you MUST call the matching tool "
+    "first (clipboard_read, search_files, list_windows, get_foreground_window, read_window_text, get_volume, system_info, "
+    "set_bluetooth check, web_search). Never guess their contents; never invent window names.\n"
     "2. When the user asks you to do something (open, close, set, find, copy, remind, remember, mute, play), call the "
     "tool right away; you may say a few words first. Actions only happen through tools: never say something is done, "
     "remembered, copied or set unless a tool result says so.\n"
@@ -46,7 +47,13 @@ TOOL_INSTRUCTIONS = (
     "yesterday, days=7 for this week. open_app launches programs by name. get_weather for weather. web_search for news, "
     "prices, scores, or facts you are unsure about; if the snippets do not contain the answer, call fetch_page on the "
     "best result's url before answering. remember when the user tells you something about themselves to keep.\n"
-    "5. Operating apps: one tool call at a time, check each result. Inside an app: focus_window or open_app first, then "
+    "5. Never state what is open, focused, on the clipboard, or on screen unless a tool told you in THIS conversation; "
+    "if you have not checked, call the tool. Examples of correct choices: 'remember that I take my coffee black' -> "
+    "remember; 'close Notepad' -> close_app; 'what does this dialog say?' -> read_window_text; 'what am I looking at?' "
+    "-> get_foreground_window; 'what's open?' -> list_windows; 'is Bluetooth on?' -> set_bluetooth(check); 'what's the "
+    "volume?' -> get_volume; 'scroll down' -> scroll(direction=down); 'type hi' -> type_text (do not focus first "
+    "unless the user named a window).\n"
+    "6. Operating apps: one tool call at a time, check each result. Inside an app: focus_window or open_app first, then "
     "find_elements / click_element / set_element_text / read_window_text by label (fast, exact). type_text and press_keys "
     "for typing and shortcuts; click only with coordinates from find_elements; look_at_screen only when the element tools "
     "cannot see what you need. Bluetooth: set_bluetooth. You may say two to four words about the step, but ALWAYS put the "
@@ -69,12 +76,15 @@ def _ex(user: str, tool: str, args: dict, result: str, reply: str, cid: str, sai
     ]
 
 
-# Worked examples for small models: they sit in the cached prefix, so they cost nothing per turn.
+# Worked examples as real messages teach the "say a few words AND call the tool in one response" format; without them the
+# 4B model narrates and stops. Their tool RESULTS must not contain reusable state (window lists, app names as facts):
+# an example whose result listed "Excel, Thunderbird" made the model claim those were open. Keep results neutral.
 FEW_SHOT: list[dict] = [
-    *_ex("Remember that I take my coffee black.", "remember", {"fact": "The user takes their coffee black"}, "I'll remember that", "Noted, black coffee it is.", "ex1"),
+    *_ex("Remember that I take my coffee black.", "remember", {"fact": "The user takes their coffee black"}, "I'll remember that",
+         "Noted, black coffee it is.", "ex1"),
     *_ex("Close Notepad.", "close_app", {"name": "Notepad"}, "asked Notepad to close", "Notepad is closed.", "ex2", said="Closing Notepad."),
-    *_ex("What does the Mail window say?", "read_window_text", {"window": "Mail"}, "read 240 characters from Mail: 'Hi, can we move lunch to 1?'",
-         "The email asks if lunch can move to one o'clock.", "ex3", said="Reading it."),
+    *_ex("What does this dialog say?", "read_window_text", {}, "read 48 characters: 'Do you want to save changes?'",
+         "It's asking whether to save your changes.", "ex3", said="Reading it."),
 ]
 
 

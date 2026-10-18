@@ -233,12 +233,14 @@ def click(ctx: ToolContext, x: int, y: int, button: str = "left", double: bool =
     return {"x": x, "y": y}, f"clicked at {x},{y}"
 
 
-@tool("scroll", group="input", description="Scroll the mouse wheel. Positive = up, negative = down; about 3 per screenful.",
-      parameters=P(amount=("integer", "wheel notches, negative to scroll down", True), x=("integer", "optional screen x", False), y=("integer", "optional screen y", False)),
-      describe=lambda a: f"scroll {'up' if int(a.get('amount', 0)) > 0 else 'down'} {abs(int(a.get('amount', 0)))}")
-def scroll(ctx: ToolContext, amount: int, x: int | None = None, y: int | None = None):
+@tool("scroll", group="input", description="Scroll the mouse wheel up or down (about 3 notches per screenful).",
+      parameters=P(direction=("string", "up | down", ["up", "down"], True), notches=("integer", "default 3", False),
+                   x=("integer", "optional screen x", False), y=("integer", "optional screen y", False)),
+      describe=lambda a: f"scroll {a.get('direction', 'down')} {a.get('notches', 3)}")
+def scroll(ctx: ToolContext, direction: str, notches: int = 3, x: int | None = None, y: int | None = None):
     _guard(ctx)
-    scroll_at(x, y, int(amount))
-    return {"amount": amount}, f"scrolled {'up' if amount > 0 else 'down'} {abs(amount)}"
+    n = max(1, min(30, int(notches)))
+    scroll_at(x, y, n if direction == "up" else -n)
+    return {"direction": direction, "notches": n}, f"scrolled {direction} {n}"
 
 
