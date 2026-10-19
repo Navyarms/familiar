@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron';
-import { IPC, type BrainStatus, type OverlayCursor, type ShellSnapshot } from '../shared/ipc';
+import { IPC, type AvatarMode, type BrainStatus, type OverlayCursor, type ShellSnapshot } from '../shared/ipc';
 
 type Unsub = () => void;
 const on = <T,>(channel: string, cb: (payload: T) => void): Unsub => {
@@ -32,6 +32,8 @@ const api = {
     setHotkey: (name: 'summon' | 'talk' | 'kill', accelerator: string): Promise<{ ok: boolean; error?: string }> => ipcRenderer.invoke(IPC.setHotkey, name, accelerator),
     getStartup: (): Promise<boolean> => ipcRenderer.invoke(IPC.getStartup),
     setStartup: (enabled: boolean): Promise<void> => ipcRenderer.invoke(IPC.setStartup, enabled),
+    getAvatarMode: (): Promise<AvatarMode> => ipcRenderer.invoke(IPC.getAvatarMode),
+    setAvatarMode: (mode: AvatarMode): Promise<void> => ipcRenderer.invoke(IPC.setAvatarMode, mode),
   },
 };
 

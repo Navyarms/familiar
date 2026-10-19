@@ -5,20 +5,21 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
 import { BrainSupervisor } from './brain';
 import { createOverlay, createPanel, createSettings } from './windows';
 import { setupUpdater } from './updater';
-import { IPC, type ShellSnapshot } from '../shared/ipc';
+import { IPC, type AvatarMode, type ShellSnapshot } from '../shared/ipc';
 
 const DEFAULT_HOTKEYS = { summon: 'CommandOrControl+Shift+Space', talk: 'CommandOrControl+Shift+M', kill: 'CommandOrControl+Alt+Escape' };
 const DATA_HOME = join(process.env['LOCALAPPDATA'] ?? app.getPath('userData'), 'Familiar');
 const SHELL_SETTINGS = join(DATA_HOME, 'shell.json');
-function loadShellSettings(): { hotkeys: typeof DEFAULT_HOTKEYS } {
+type ShellSettings = { hotkeys: typeof DEFAULT_HOTKEYS; avatarMode: AvatarMode };
+function loadShellSettings(): ShellSettings {
   try {
     const j = JSON.parse(readFileSync(SHELL_SETTINGS, 'utf-8'));
-    return { hotkeys: { ...DEFAULT_HOTKEYS, ...(j.hotkeys ?? {}) } };
+    return { hotkeys: { ...DEFAULT_HOTKEYS, ...(j.hotkeys ?? {}) }, avatarMode: j.avatarMode === 'summoned' ? 'summoned' : 'always' };
   } catch {
-    return { hotkeys: { ...DEFAULT_HOTKEYS } };
+    return { hotkeys: { ...DEFAULT_HOTKEYS }, avatarMode: 'always' };
   }
 }
-function saveShellSettings(s: { hotkeys: typeof DEFAULT_HOTKEYS }): void {
+function saveShellSettings(s: ShellSettings): void {
   try {
     mkdirSync(DATA_HOME, { recursive: true });
     writeFileSync(SHELL_SETTINGS, JSON.stringify(s, null, 2));
@@ -36,7 +37,52 @@ let panel: BrowserWindow | null = null;
 let settings: BrowserWindow | null = null;
 let tray: Tray | null = null;
 const brain = new BrainSupervisor(isDev);
+let updates: ReturnType<typeof setupUpdater> | null = null;
 if (process.env['FAMILIAR_CDP']) app.commandLine.appendSwitch('remote-debugging-port', process.env['FAMILIAR_CDP']);
+
+// Avatar presence. In 'summoned' mode the overlay stays hidden until something happens (summon hotkey, wake
+// word, a turn, speech or a reminder) and hides again a few seconds after everything is quiet.
+const AVATAR_LINGER_MS = 6000;
+let brainState = 'booting';
+let speaking = false;
+let hideTimer: NodeJS.Timeout | null = null;
+function avatarBusy(): boolean {
+  return (panel?.isVisible() ?? false) || speaking || micMode === 'listening' || micMode === 'processing' ||
+    ['listening', 'thinking', 'speaking', 'executing', 'needs_confirm'].includes(brainState);
+}
+function showAvatar(): void {
+  if (hideTimer) { clearTimeout(hideTimer); hideTimer = null; }
+  if (overlay && !overlay.isDestroyed() && !overlay.isVisible()) overlay.showInactive();
+}
+function settleAvatar(): void {
+  if (shellSettings.avatarMode !== 'summoned' || avatarBusy()) return showAvatar();
+  if (hideTimer) return;
+  hideTimer = setTimeout(() => {
+    hideTimer = null;
+    if (shellSettings.avatarMode === 'summoned' && !avatarBusy() && overlay && !overlay.isDestroyed()) overlay.hide();
+  }, AVATAR_LINGER_MS);
+}
+function setAvatarMode(mode: AvatarMode): void {
+  shellSettings.avatarMode = mode;
+  saveShellSettings(shellSettings);
+  settleAvatar();
+  rebuildTray();
+}
+
+function rebuildTray(): void {
+  tray?.setContextMenu(Menu.buildFromTemplate([
+    { label: 'Open chat', click: showPanel, accelerator: HOTKEYS.summon },
+    { label: 'Talk (push to talk)', click: toggleTalk, accelerator: HOTKEYS.talk },
+    { label: 'Avatar always on screen', type: 'checkbox', checked: shellSettings.avatarMode === 'always', click: (item) => setAvatarMode(item.checked ? 'always' : 'summoned') },
+    { label: 'Settings…', click: openSettings },
+    { type: 'separator' },
+    { label: 'Stop speaking', click: () => brain.send({ type: 'interrupt' }) },
+    { label: 'Restart brain', click: () => { brain.stop(); setTimeout(() => brain.start(), 500); } },
+    { label: 'Check for updates…', click: async () => { const r = await updates?.check(); tray?.displayBalloon?.({ title: 'Familiar', content: String(r ?? '') }); } },
+    { type: 'separator' },
+    { label: 'Quit Familiar', click: () => app.quit() },
+  ]));
+}
 
 if (!app.requestSingleInstanceLock()) app.quit();
 app.on('second-instance', () => showPanel());
@@ -49,6 +95,7 @@ let avatarPath: string | null = null;
 function showPanel(): void {
   if (!panel || !overlay) return;
   (panel as any).__placeNear();
+  showAvatar();
   panel.show();
   panel.focus();
   panel.webContents.send(IPC.panelShown);
@@ -63,7 +110,7 @@ function togglePanel(): void {
 /** Talk hotkey: start capturing right away (no wake word); press again to stop early. */
 function toggleTalk(): void {
   if (micMode === 'listening') brain.send({ type: 'ptt.stop' });
-  else brain.send({ type: 'ptt.start' });
+  else { showAvatar(); brain.send({ type: 'ptt.start' }); }
 }
 
 function openSettings(): void {
@@ -102,21 +149,14 @@ app.whenReady().then(() => {
   });
   overlay = createOverlay();
   panel = createPanel(overlay);
+  if (shellSettings.avatarMode === 'summoned') overlay.hide();
+  panel.on('show', showAvatar);
+  panel.on('hide', settleAvatar);
 
-  const updates = setupUpdater((s) => console.log('[updater]', s));
+  updates = setupUpdater((s) => console.log('[updater]', s));
   tray = new Tray(trayIcon());
   tray.setToolTip('Familiar');
-  tray.setContextMenu(Menu.buildFromTemplate([
-    { label: 'Open chat', click: showPanel, accelerator: HOTKEYS.summon },
-    { label: 'Talk (push to talk)', click: toggleTalk, accelerator: HOTKEYS.talk },
-    { label: 'Settings…', click: openSettings },
-    { type: 'separator' },
-    { label: 'Stop speaking', click: () => brain.send({ type: 'interrupt' }) },
-    { label: 'Restart brain', click: () => { brain.stop(); setTimeout(() => brain.start(), 500); } },
-    { label: 'Check for updates…', click: async () => { const r = await updates.check(); tray?.displayBalloon?.({ title: 'Familiar', content: r }); } },
-    { type: 'separator' },
-    { label: 'Quit Familiar', click: () => app.quit() },
-  ]));
+  rebuildTray();
   tray.on('click', togglePanel);
 
   const actions = { summon: togglePanel, talk: toggleTalk, kill: () => brain.send({ type: 'kill_switch' }) } as const;
@@ -143,6 +183,8 @@ app.whenReady().then(() => {
   });
   ipcMain.handle(IPC.getStartup, () => app.getLoginItemSettings().openAtLogin);
   ipcMain.handle(IPC.setStartup, (_e, enabled: boolean) => app.setLoginItemSettings({ openAtLogin: enabled, args: ['--hidden'] }));
+  ipcMain.handle(IPC.getAvatarMode, () => shellSettings.avatarMode);
+  ipcMain.handle(IPC.setAvatarMode, (_e, mode: AvatarMode) => setAvatarMode(mode === 'summoned' ? 'summoned' : 'always'));
   ipcMain.handle(IPC.pickFile, async (_e, options: { title?: string; filters?: Electron.FileFilter[] }) => {
     const r = await dialog.showOpenDialog({ title: options?.title, filters: options?.filters, properties: ['openFile'] });
     return r.canceled ? null : r.filePaths[0];
@@ -162,7 +204,9 @@ app.whenReady().then(() => {
     overlay.setPosition(x + dx, y + dy);
   });
   ipcMain.on(IPC.overlayPlaybackState, (_e, state) => {
-    brain.send({ type: 'playback', speaking: state === 'speaking' }); // barge-in + speaking state live in the brain
+    speaking = state === 'speaking';
+    settleAvatar();
+    brain.send({ type: 'playback', speaking }); // barge-in + speaking state live in the brain
     for (const w of BrowserWindow.getAllWindows()) w.webContents.send(IPC.brainMessage, { type: 'shell.playback', state });
   });
   ipcMain.on(IPC.panelHide, () => panel?.hide());
@@ -173,12 +217,14 @@ app.whenReady().then(() => {
     lastModelsInfo: brain.lastModelsInfo,
     lastState: brain.lastState,
     hotkeys: HOTKEYS,
+    avatarMode: shellSettings.avatarMode,
     version: app.getVersion(),
   }));
 
   // First run: when the brain reports missing models, open settings so the user can start the download.
   brain.on('message', (msg: any) => {
-    if (msg.type === 'mic.state') micMode = msg.mode;
+    if (msg.type === 'mic.state') { micMode = msg.mode; settleAvatar(); }
+    if (msg.type === 'state') { brainState = msg.state; settleAvatar(); }
     if (msg.type === 'hello') {
       avatarPath = msg.persona?.avatar_path ?? null;
       if (isDev) net.fetch('familiar://avatar/current.vrm').then((r) => console.log(`[avatar] main self-test ${r.status}`)).catch((e) => console.log(`[avatar] main self-test failed: ${e}`));

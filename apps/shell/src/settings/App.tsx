@@ -23,6 +23,8 @@ export function App() {
   const [devices, setDevices] = useState<{ devices: any[]; current: any } | null>(null);
   const [hotkeys, setHotkeys] = useState<{ summon: string; talk: string; kill: string } | null>(null);
   const [startup, setStartup] = useState<boolean | null>(null);
+  const [avatarMode, setAvatarModeState] = useState<'always' | 'summoned'>('always');
+  const setAvatarMode = async (m: 'always' | 'summoned') => { setAvatarModeState(m); await window.familiar.shell.setAvatarMode(m); };
   const [tab, setTab] = useState<'general' | 'voice' | 'input' | 'models' | 'privacy' | 'tools'>('general');
 
   const send = (m: any) => window.familiar.brain.send(m);
@@ -34,6 +36,7 @@ export function App() {
       setSnap(s); setInfo(s.lastModelsInfo); setHello(s.lastHello); setState(s.lastState); setStatus(s.brain); setHotkeys(s.hotkeys);
     });
     window.familiar.shell.getStartup().then(setStartup);
+    window.familiar.shell.getAvatarMode().then(setAvatarModeState);
     const off = window.familiar.brain.onMessage((m: any) => {
       if (m.type === 'models.info') setInfo(m);
       if (m.type === 'hello') { setHello(m); send({ type: 'personas.list' }); send({ type: 'voices.list' }); }
@@ -114,7 +117,10 @@ export function App() {
                 {settings?.avatar_override && <button onClick={() => update({ avatar_override: null })}>Clear</button>}
               </dd>
             </dl>
-            <p className="muted" style={{ marginBottom: 0 }}>Any VRM 0.x or 1.0 you have the rights to use (VRoid Studio exports work). Lip sync and expressions map automatically.</p>
+            <p className="muted">Any VRM 0.x or 1.0 you have the rights to use (VRoid Studio exports work). Lip sync and expressions map automatically.</p>
+            <h3 style={{ margin: '8px 0 4px' }}>On screen</h3>
+            <label className="row"><input type="radio" name="avatarMode" checked={avatarMode === 'always'} onChange={() => setAvatarMode('always')} /> Always</label>
+            <label className="row"><input type="radio" name="avatarMode" checked={avatarMode === 'summoned'} onChange={() => setAvatarMode('summoned')} /> Only when summoned: appears for the hotkey, wake word, replies and reminders, and hides a few seconds after going quiet</label>
           </div>
         </>
       )}

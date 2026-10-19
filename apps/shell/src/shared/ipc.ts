@@ -14,6 +14,8 @@ export const IPC = {
   setHotkey: 'shell:setHotkey', // invoke(name, accelerator) -> {ok, error?}
   getStartup: 'shell:getStartup', // invoke -> boolean
   setStartup: 'shell:setStartup', // invoke(boolean)
+  getAvatarMode: 'shell:getAvatarMode', // invoke -> AvatarMode
+  setAvatarMode: 'shell:setAvatarMode', // invoke(AvatarMode)
   // main -> renderer
   brainMessage: 'brain:message', // any BrainMessage (JSON)
   brainStatus: 'brain:status', // BrainStatus
@@ -29,12 +31,16 @@ export type BrainStatus = {
   lastError?: string;
 };
 
+/** 'always': the avatar stays on screen. 'summoned': it appears when summoned, listening, working or speaking, and hides again when quiet. */
+export type AvatarMode = 'always' | 'summoned';
+
 export type ShellSnapshot = {
   brain: BrainStatus;
   lastHello?: unknown;
   lastModelsInfo?: unknown;
   lastState?: unknown;
   hotkeys: { summon: string; talk: string; kill: string };
+  avatarMode: AvatarMode;
   version: string;
 };
 
