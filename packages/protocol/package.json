@@ -1,7 +1,7 @@
 {
   "name": "@familiar/protocol",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Generated TypeScript types for the Shell <-> Brain protocol.",
   "types": "./ts/index.d.ts",
   "main": "./ts/index.js",

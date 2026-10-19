@@ -1,6 +1,6 @@
 [project]
 name = "familiar-brain"
-version = "0.1.0"
+version = "0.1.1"
 description = "Familiar's local brain: LLM, TTS, STT, tools, memory. Talks to the Electron shell over a local WebSocket."
 requires-python = ">=3.12,<3.13"
 license = "MIT"

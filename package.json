@@ -1,7 +1,7 @@
 {
   "name": "familiar",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "An always-on-top AI companion for Windows that runs entirely on your machine.",
   "license": "MIT",
   "workspaces": ["apps/shell", "packages/protocol"],

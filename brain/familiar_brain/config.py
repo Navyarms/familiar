@@ -9,7 +9,7 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
 APP_NAME = "Familiar"
-BRAIN_VERSION = "0.1.0"
+BRAIN_VERSION = "0.1.1"
 
 
 def repo_root() -> Path | None:
