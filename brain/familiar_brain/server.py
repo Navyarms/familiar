@@ -528,8 +528,17 @@ class Brain:
             self.settings.update(msg.settings)
             self.settings.save(self.paths.settings_file)
             await self.send(self.settings_items())
+            switched = False
             if "persona_id" in msg.settings and self.persona and msg.settings["persona_id"] != self.persona.id:
                 await self.switch_persona(msg.settings["persona_id"])
+                switched = True
+            if "avatar_override" in msg.settings and self.persona and not switched:
+                # Same persona, new (or cleared) avatar: reload it and tell the overlay; keep the conversation.
+                try:
+                    self.persona = load_persona(self.paths, self.persona.id, self.settings.avatar_override)
+                    await self.send(self.hello())
+                except Exception as e:
+                    await self.send({"type": "error", "code": "persona", "message": str(e), "fatal": False})
             if any(k in msg.settings for k in ("tool_permissions", "web_enabled", "file_roots")):
                 self.registry.configure(self.settings)
                 await self.send(self.tools_info())

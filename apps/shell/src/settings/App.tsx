@@ -110,8 +110,8 @@ export function App() {
               <dt>Override</dt>
               <dd className="row">
                 <code className="grow" style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{settings?.avatar_override || '(none: uses the pack’s avatar.vrm)'}</code>
-                <button onClick={async () => { const p = await window.familiar.shell.pickFile({ title: 'Choose a VRM', filters: [{ name: 'VRM model', extensions: ['vrm'] }] }); if (p) { update({ avatar_override: p }); if (active) update({ persona_id: active.id }); } }}>Choose VRM…</button>
-                {settings?.avatar_override && <button onClick={() => { update({ avatar_override: null }); if (active) update({ persona_id: active.id }); }}>Clear</button>}
+                <button onClick={async () => { const p = await window.familiar.shell.pickFile({ title: 'Choose a VRM', filters: [{ name: 'VRM model', extensions: ['vrm'] }] }); if (p) update({ avatar_override: p }); }}>Choose VRM…</button>
+                {settings?.avatar_override && <button onClick={() => update({ avatar_override: null })}>Clear</button>}
               </dd>
             </dl>
             <p className="muted" style={{ marginBottom: 0 }}>Any VRM 0.x or 1.0 you have the rights to use (VRoid Studio exports work). Lip sync and expressions map automatically.</p>
