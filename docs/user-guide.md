@@ -43,7 +43,8 @@ with “you're using the mouse” if you keep going.
 ## Settings (tray icon → Settings…)
 
 - **Persona**: switch personas, duplicate the built-in Wisp to edit its name, wake phrase, voice and
-  system prompt, import packs (.zip), choose a VRM avatar.
+  system prompt, import packs (.zip), choose a VRM avatar, and choose whether the avatar is always on
+  screen or only appears when summoned (also in the tray menu).
 - **Voice**: 50+ Kokoro voices with preview and speed.
 - **Hotkeys & mic**: change the three hotkeys, start with Windows, pick the microphone, wake-word
   sensitivity, “interrupt on any speech” for headset users.
@@ -61,8 +62,12 @@ what you know about …”, or delete items in Settings. Nothing is uploaded.
 
 Any VRM 0.x or 1.0 model you have the rights to use works: VRoid Studio exports, models from VRoid
 Hub or Booth with a licence that allows personal use. Put it in the persona folder as `avatar.vrm` or
-pick it under *Settings → Persona → Avatar*. Lip sync and expressions (`[happy]`, `[surprised]`…) map
-automatically; adjust the mapping in the pack's `expressions.json`.
+pick it under *Settings → Persona → Avatar*; it switches immediately. Lip sync and expressions (`[happy]`,
+`[surprised]`…) map automatically; adjust the mapping in the pack's `expressions.json`.
+
+**On screen: Always / Only when summoned.** In the second mode the avatar stays hidden until you press the
+summon or talk hotkey, say the wake phrase, or Wisp has something to say (a reply, a reminder). It fades out
+a few seconds after everything goes quiet. Chat and voice keep working either way.
 
 ## Troubleshooting
 
