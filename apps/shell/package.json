@@ -34,7 +34,7 @@
   },
   "productName": "Familiar",
   "author": "Familiar contributors",
-  "homepage": "https://github.com/OWNER/familiar",
+  "homepage": "https://github.com/Navyarms/familiar",
   "build": {
     "appId": "dev.familiar.app",
     "productName": "Familiar",
@@ -88,7 +88,7 @@
     "publish": [
       {
         "provider": "github",
-        "owner": "OWNER",
+        "owner": "Navyarms",
         "repo": "familiar"
       }
     ]
