@@ -34,10 +34,11 @@ EXPRESSION_INSTRUCTIONS = (
 )
 TOOL_INSTRUCTIONS = (
     "\n\nYou operate this Windows PC through tools. Rules:\n"
-    "1. You know nothing about this PC by yourself: not the clipboard, files, open windows, the active window, volume, "
-    "battery, Bluetooth, or anything current on the web. To answer about any of those you MUST call the matching tool "
-    "first (clipboard_read, search_files, list_windows, get_foreground_window, read_window_text, get_volume, system_info, "
-    "set_bluetooth check, web_search). Never guess their contents; never invent window names.\n"
+    "1. You know nothing about this PC or the outside world by yourself: not the clipboard, files, open windows, the "
+    "active window, volume, battery, Bluetooth, the weather, or anything current on the web. To answer about any of "
+    "those you MUST call the matching tool first (clipboard_read, search_files, list_windows, get_foreground_window, "
+    "read_window_text, get_volume, system_info, set_bluetooth check, get_weather, web_search). Never guess their "
+    "contents; never invent window names or weather.\n"
     "2. When the user asks you to do something (open, close, set, find, copy, remind, remember, mute, play), call the "
     "tool right away; you may say a few words first. Actions only happen through tools: never say something is done, "
     "remembered, copied or set unless a tool result says so.\n"
@@ -52,7 +53,8 @@ TOOL_INSTRUCTIONS = (
     "remember; 'close Notepad' -> close_app; 'what does this dialog say?' -> read_window_text; 'what am I looking at?' "
     "-> get_foreground_window; 'what's open?' -> list_windows; 'is Bluetooth on?' -> set_bluetooth(check); 'what's the "
     "volume?' -> get_volume; 'scroll down' -> scroll(direction=down); 'type hi' -> type_text (do not focus first "
-    "unless the user named a window).\n"
+    "unless the user named a window); 'what's the weather like?' -> get_weather with no place (it uses the user's "
+    "location); 'where am I?' -> answer from what you know about the user, no tool.\n"
     "6. Operating apps: one tool call at a time, check each result. Inside an app: focus_window or open_app first, then "
     "find_elements / click_element / set_element_text / read_window_text by label (fast, exact). type_text and press_keys "
     "for typing and shortcuts; click only with coordinates from find_elements; look_at_screen only when the element tools "
@@ -62,6 +64,10 @@ TOOL_INSTRUCTIONS = (
 )
 MEMORY_PREFIX = "\n\nThings you remember about the user:\n"
 TIME_WORDS = re.compile(r"\b(time|date|today|tomorrow|yesterday|tonight|morning|afternoon|evening|week|month|year|day|hour|minute|o'?clock|late|early|schedule|calendar|when|now|clock)\b", re.I)
+# Questions that can only be answered by a tool. In a chatty conversation the small model sometimes answers these
+# from thin air ("I don't have live weather"), so the first step runs with tool_choice=required instead of hoping.
+MUST_TOOL_RE = re.compile(r"\b(weather|forecast|(?:is|will) it (?:going to )?(?:rain|snow|storm)|how (?:hot|cold|warm) is it|"
+                          r"temperature outside|(?:what(?:'s| is) (?:on|in) (?:my|the) clipboard)|(?:what(?:'s| is) (?:open|running)|which windows))\b", re.I)
 ANNOUNCE_RE = re.compile(r"^(?:\[\w+\]\s*)?(?:i['\u2019]ll|i will|let me|i['\u2019]m going to|checking|clicking|opening|looking|reading|typing|turning|setting|searching|finding|closing|pressing|focusing|snapping|minimizing|maximizing)\b", re.I)
 
 
@@ -80,8 +86,11 @@ def _ex(user: str, tool: str, args: dict, result: str, reply: str, cid: str, sai
 # 4B model narrates and stops. Their tool RESULTS must not contain reusable state (window lists, app names as facts):
 # an example whose result listed "Excel, Thunderbird" made the model claim those were open. Keep results neutral.
 FEW_SHOT: list[dict] = [
-    *_ex("Remember that I take my coffee black.", "remember", {"fact": "The user takes their coffee black"}, "I'll remember that",
-         "Noted, black coffee it is.", "ex1"),
+    # The model repeats example facts as if the user had said them (it told a user they "take their coffee black"),
+    # and without a remember example it fakes "got it" with no tool call. So the example fact is one that is true
+    # and harmless for every user.
+    *_ex("Remember that I'm using you on my Windows PC.", "remember", {"fact": "The user runs Familiar on a Windows PC"},
+         "I'll remember that", "Noted.", "ex1"),
     *_ex("Close Notepad.", "close_app", {"name": "Notepad"}, "asked Notepad to close", "Notepad is closed.", "ex2", said="Closing Notepad."),
     *_ex("What does this dialog say?", "read_window_text", {}, "read 48 characters: 'Do you want to save changes?'",
          "It's asking whether to save your changes.", "ex3", said="Reading it."),
@@ -89,13 +98,26 @@ FEW_SHOT: list[dict] = [
 
 
 USER_NAME_NOTE = "\n\nThe user's name is {name}. Use it now and then, the way a friend would, not in every reply."
+LOCATION_NOTE = {
+    "settings": "\n\nThe user is in {loc}. Use that for weather, local time, nearby places and when they ask where they are.",
+    "network": ("\n\nThe user is probably in {loc} (a guess from their network connection, so it may be off). Use it for weather "
+                "and local questions, and say it is approximate if they ask where they are."),
+}
+
+
+PINNED_PREFIX = "\n\nThings the user asked you to remember (true until they say otherwise):\n"
 
 
 def build_system_prompt(persona: Persona, *, tools: bool = False, memories: list[str] | None = None,
-                        user_name: str | None = None) -> str:
+                        user_name: str | None = None, location: str | None = None, location_source: str = "settings",
+                        pinned: list[str] | None = None) -> str:
     p = persona.system_prompt.strip() + EXPRESSION_INSTRUCTIONS.format(tags=", ".join(f"[{t}]" for t in persona.expression_tags()))
     if user_name and user_name.strip():
         p += USER_NAME_NOTE.format(name=user_name.strip())
+    if location and location.strip() and location_source in LOCATION_NOTE:
+        p += LOCATION_NOTE[location_source].format(loc=location.strip())
+    if pinned:
+        p += PINNED_PREFIX + "\n".join(f"- {m}" for m in pinned[:12])
     if tools:
         p += TOOL_INSTRUCTIONS
     if memories:
@@ -107,10 +129,11 @@ class Turn:
     def __init__(self, *, llm: LlmClient, tts: KokoroTTS | None, persona: Persona, history: list[dict],
                  send: Send, speak: bool = True, max_tokens: int = 400, registry: ToolRegistry | None = None,
                  ctx: ToolContext | None = None, confirm: Confirm | None = None, memories: list[str] | None = None,
-                 max_steps: int = 10, user_name: str | None = None):
+                 max_steps: int = 10, user_name: str | None = None, location: str | None = None, location_source: str = "settings",
+                 pinned: list[str] | None = None):
         self.llm, self.tts, self.persona, self.history, self.send = llm, tts, persona, history, send
         self.speak = speak and tts is not None
-        self.user_name = user_name
+        self.user_name, self.location, self.location_source, self.pinned = user_name, location, location_source, pinned
         self.max_tokens = max_tokens
         self.registry, self.ctx, self.confirm, self.memories, self.max_steps = registry, ctx, confirm, memories, max_steps
         self.turn_id = uuid.uuid4().hex[:8]
@@ -133,8 +156,17 @@ class Turn:
         if self.memories:
             parts.append("You remember: " + "; ".join(self.memories[-12:]) + ".")
         user_content = user_text if not parts else f"{user_text}\n\n(Private context, do not read aloud: {' '.join(parts)})"
-        messages = [{"role": "system", "content": build_system_prompt(self.persona, tools=use_tools, user_name=self.user_name)},
-                    *(FEW_SHOT if use_tools else []), *self.history, {"role": "user", "content": user_content}]
+        # Questions that need live data get only the last exchange of history: after a few chatty turns the 4B model
+        # answers "what's the weather like?" in prose (even inventing a forecast) and llama-server's
+        # tool_choice=required does not override that, while the same request with a short history calls the tool.
+        must_tool = bool(use_tools and MUST_TOOL_RE.search(user_text))
+        hist = self.history[-2:] if must_tool else self.history
+        if must_tool:
+            user_content = user_text  # the memory/time note on the user turn has the same chat-mode effect; the tool needs neither
+        messages = [{"role": "system", "content": build_system_prompt(self.persona, tools=use_tools, user_name=self.user_name,
+                                                                         location=self.location, location_source=self.location_source,
+                                                                         pinned=self.pinned)},
+                    *(FEW_SHOT if use_tools else []), *hist, {"role": "user", "content": user_content}]
         tools = self.registry.openai_tools() if use_tools else None
         full_spoken = ""
         last_stats = StreamStats()
@@ -142,7 +174,9 @@ class Turn:
         await self.send({"type": "state", "state": "thinking"})
         try:
             nudged = False
-            force_tool = False
+            force_tool = must_tool
+            if force_tool:
+                log.info("question needs live data: tool_choice=required, history trimmed to the last exchange")
             for step in range(self.max_steps):
                 stats = StreamStats()
                 last_stats = stats if step == 0 else last_stats
@@ -201,6 +235,8 @@ class Turn:
         chunker.emitted = self._sid
         content = ""
         self._spoke_this_step = False
+        recent: list[str] = []  # last sentences, to cut off a model stuck repeating itself
+        looped = False
         async for tok in self.llm.stream(messages, max_tokens=self.max_tokens, stats=stats, tools=tools, temperature=0.4 if tools else 0.7,
                                          tool_choice="required" if (force_tool and tools) else "auto"):
             clean = stripper.feed(tok)
@@ -209,8 +245,16 @@ class Turn:
                 content += clean
                 await self.send({"type": "reply.token", "turn_id": self.turn_id, "text": clean})
                 for s in chunker.feed(clean):
+                    key = " ".join(s.lower().split())
+                    if len(recent) >= 2 and key == recent[-1] == recent[-2]:
+                        looped = True
+                        break
+                    recent = (recent + [key])[-3:]
                     await self._tts_queue.put((chunker.emitted, s))
-        tail = stripper.flush()
+            if looped:
+                log.warning("stopped a repetition loop after %r", recent[-1][:60])
+                break
+        tail = "" if looped else stripper.flush()
         self._flush_tags(stripper, chunker)
         if tail:
             content += tail

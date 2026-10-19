@@ -27,6 +27,21 @@ CREATE TABLE IF NOT EXISTS preferences (key TEXT PRIMARY KEY, value TEXT);
 """
 
 
+def _same_subject(a: str, b: str, min_words: int = 4) -> bool:
+    """True when two facts open with the same phrase and differ only after it: "the user's favorite color is teal"
+    vs "... is forest green". Requires at least min_words shared and most of the shorter sentence to be that prefix."""
+    wa = a.lower().rstrip(".").split()
+    wb = b.lower().rstrip(".").split()
+    if wa == wb:
+        return False
+    n = 0
+    for x, y in zip(wa, wb, strict=False):
+        if x != y:
+            break
+        n += 1
+    return n >= min_words and n >= 0.6 * min(len(wa), len(wb))
+
+
 def _now() -> str:
     return dt.datetime.now().isoformat(timespec="seconds")
 
@@ -44,6 +59,8 @@ class MemoryStore:
         self.path = path
         self.embedder = embedder
         self.db = sqlite3.connect(str(path), check_same_thread=False)
+        self.version = 0  # bumps when explicit (pinned) facts change; the brain re-warms its prompt prefix on change
+        self.last_replaced: str | None = None
         self.db.row_factory = sqlite3.Row
         self._lock = threading.Lock()
         with self._lock:
@@ -75,14 +92,44 @@ class MemoryStore:
         log.info("backfilled %d embeddings", len(rows))
 
     # ------------------------------------------------------------ facts
-    def remember(self, text: str, source: str = "user", dedupe: float = 0.92) -> tuple[int, bool]:
-        """Insert unless a near-duplicate exists. Returns (id, created)."""
+    def remember(self, text: str, source: str = "user", dedupe: float = 0.92, supersede: float = 0.70,
+                 extracted_dupe: float = 0.84) -> tuple[int, bool]:
+        """Insert unless a near-duplicate exists. Returns (id, created).
+
+        Explicit memories (source 'user') that are about the same thing as an older fact but say something
+        different ("favorite color is green" after "favorite color is teal") replace it; the old text is kept
+        in self.last_replaced for the spoken confirmation.
+        """
+        self.last_replaced: str | None = None
         text = " ".join(text.split()).strip().rstrip(".") + "."
         emb = self._embed(text)
         if emb is not None:
-            near = self._search("facts", emb, limit=1)
+            near = self._search("facts", emb, limit=3)
             if near and near[0][1] >= dedupe:
                 return near[0][0], False
+            if source != "user":
+                # Extracted facts never override anything and never add a rewording of a fact already known:
+                # skip when clearly the same statement (>= extracted_dupe) or the same subject with a new value.
+                for fid, score in near:
+                    if score < supersede:
+                        break
+                    old = self.db.execute("SELECT id, text FROM facts WHERE id=?", (fid,)).fetchone()
+                    if old and (score >= extracted_dupe or _same_subject(old["text"], text)):
+                        return old["id"], False
+            if source == "user":
+                # Similarity alone cannot tell "same fact, new value" from "related but different fact" (the user's
+                # birthday vs their wife's birthday score 0.92), so also require the same opening phrase.
+                for fid, score in near:
+                    if score < supersede:
+                        break
+                    old = self.db.execute("SELECT id, text FROM facts WHERE id=?", (fid,)).fetchone()
+                    if old and _same_subject(old["text"], text):
+                        with self._lock:
+                            self.db.execute("UPDATE facts SET text=?, created=?, source=?, embedding=? WHERE id=?", (text, _now(), source, _blob(emb), old["id"]))
+                            self.db.commit()
+                        self.last_replaced = old["text"]
+                        self.version += 1
+                        return old["id"], True
         else:
             row = self.db.execute("SELECT id FROM facts WHERE lower(text)=lower(?)", (text,)).fetchone()
             if row:
@@ -90,6 +137,8 @@ class MemoryStore:
         with self._lock:
             cur = self.db.execute("INSERT INTO facts(text, created, source, embedding) VALUES (?,?,?,?)", (text, _now(), source, _blob(emb)))
             self.db.commit()
+        if source == "user":
+            self.version += 1
         return cur.lastrowid, True
 
     def _search(self, table: str, q: np.ndarray, limit: int = 8) -> list[tuple[int, float]]:
@@ -130,15 +179,25 @@ class MemoryStore:
                 out.append({"id": r["id"], "kind": "episode", "text": r["summary"], "created": r["started"], "score": round(score, 3)})
         return out
 
-    def context_for(self, query: str, *, k_facts: int = 6, k_recent: int = 3, min_score: float = 0.55) -> list[str]:
-        """What to put in the prompt for this user turn: relevant facts, a few recent ones, related episode summaries."""
+    def pinned(self, limit: int = 12) -> list[str]:
+        """Facts the user explicitly asked to remember (source 'user'), newest first. These live in the system
+        prompt so they are always in view; self.version changes whenever they do, so the prefix can be re-warmed."""
+        return [r["text"] for r in self.db.execute("SELECT text FROM facts WHERE source='user' ORDER BY id DESC LIMIT ?", (limit,))]
+
+    def context_for(self, query: str, *, k_facts: int = 6, k_recent: int = 3, min_score: float = 0.55,
+                    exclude: set[str] | None = None) -> list[str]:
+        """What rides on this user turn: relevant facts, a few recent ones, related episode summaries. Pinned
+        facts (already in the system prompt) are left out when passed in exclude."""
         picked: list[str] = []
         seen: set[int] = set()
-        for f in self.recall(query, limit=k_facts, min_score=min_score):
+        skip = exclude or set()
+        for f in self.recall(query, limit=k_facts, min_score=min_score):  # most relevant first
             seen.add(f["id"])
-            picked.append(f["text"])
+            if f["text"] not in skip:
+                picked.append(f["text"])
         for r in self.db.execute("SELECT id, text FROM facts ORDER BY id DESC LIMIT ?", (k_recent,)):
-            if r["id"] not in seen:
+            if r["id"] not in seen and r["text"] not in skip:
+                seen.add(r["id"])
                 picked.append(r["text"])
         ids = list(seen)
         if ids:
@@ -154,6 +213,8 @@ class MemoryStore:
             for h in hits:
                 self.db.execute("DELETE FROM facts WHERE id=?", (h["id"],))
             self.db.commit()
+        if hits:
+            self.version += 1
         return len(hits)
 
     def delete(self, kind: str, id: int) -> bool:
@@ -161,6 +222,8 @@ class MemoryStore:
         with self._lock:
             cur = self.db.execute(f"DELETE FROM {table} WHERE id=?", (id,))
             self.db.commit()
+        if cur.rowcount > 0 and table == "facts":
+            self.version += 1
         return cur.rowcount > 0
 
     def delete_all(self) -> None:
@@ -169,6 +232,7 @@ class MemoryStore:
             self.db.execute("DELETE FROM episodes")
             self.db.execute("DELETE FROM turns")
             self.db.commit()
+        self.version += 1
 
     def recent(self, limit: int = 20) -> list[str]:
         return [r["text"] for r in self.db.execute("SELECT text FROM facts ORDER BY id DESC LIMIT ?", (limit,))][::-1]

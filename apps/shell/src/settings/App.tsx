@@ -26,7 +26,8 @@ export function App() {
   const [avatarMode, setAvatarModeState] = useState<'always' | 'summoned'>('always');
   const [userName, setUserName] = useState('');
   const [userSpoken, setUserSpoken] = useState('');
-  useEffect(() => { if (settings) { setUserName(settings.user_name ?? ''); setUserSpoken(settings.user_name_spoken ?? ''); } }, [settings?.user_name, settings?.user_name_spoken]);
+  const [userLocation, setUserLocation] = useState('');
+  useEffect(() => { if (settings) { setUserName(settings.user_name ?? ''); setUserSpoken(settings.user_name_spoken ?? ''); setUserLocation(settings.user_location ?? ''); } }, [settings?.user_name, settings?.user_name_spoken, settings?.user_location]);
   const setAvatarMode = async (m: 'always' | 'summoned') => { setAvatarModeState(m); await window.familiar.shell.setAvatarMode(m); };
   const [tab, setTab] = useState<'general' | 'voice' | 'input' | 'models' | 'privacy' | 'tools'>('general');
 
@@ -95,8 +96,14 @@ export function App() {
                 <input className="grow" placeholder="only if it sounds wrong: spell it the way it sounds, e.g. “Dillon”" value={userSpoken} onChange={(e) => setUserSpoken(e.target.value)} onBlur={() => update({ user_name_spoken: userSpoken.trim() || null })} onKeyDown={(e) => { if (e.key === 'Enter') update({ user_name_spoken: userSpoken.trim() || null }); }} />
                 <button disabled={!userName.trim()} onClick={() => { update({ user_name: userName.trim() || null, user_name_spoken: userSpoken.trim() || null }); send({ type: 'voice.preview', voice: voices?.current ?? active?.voice ?? 'af_heart', speed: 1.0, text: `Hi ${userName.trim()}, good to see you.` }); }}>▶ Hear it</button>
               </dd>
+              <dt>Location</dt>
+              <dd className="row">
+                <input className="grow" placeholder={settings?.location_detected ? `blank = ${settings.location_detected} (from your network)` : 'City, State (blank = detect from your network)'} value={userLocation} onChange={(e) => setUserLocation(e.target.value)} onBlur={() => update({ user_location: userLocation.trim() || null })} onKeyDown={(e) => { if (e.key === 'Enter') update({ user_location: userLocation.trim() || null }); }} />
+              </dd>
+              <dt></dt>
+              <dd><label><input type="checkbox" checked={!!settings?.location_detect} onChange={(e) => update({ location_detect: e.target.checked })} /> Detect my location from the network when the field is blank (city-level, approximate; needs web access)</label></dd>
             </dl>
-            <p className="muted" style={{ marginBottom: 0 }}>{active?.name ?? 'Wisp'} will use your name now and then. The spelling only changes how it is pronounced, never how it is written.</p>
+            <p className="muted" style={{ marginBottom: 0 }}>{active?.name ?? 'Wisp'} will use your name now and then and knows roughly where you are for weather, local time and “where am I?”. The spelling only changes how the name is pronounced. Everything you tell it to remember is listed under Privacy &amp; memory.</p>
           </div>
           <h2>Persona</h2>
           <div className="card">

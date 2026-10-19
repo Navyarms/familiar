@@ -16,18 +16,27 @@ def store(ctx: ToolContext):
       parameters=P(fact=("string", "One short sentence, e.g. 'The user's dog is named Biscuit'", True)),
       describe=lambda a: f"remember: {a.get('fact')}")
 def remember(ctx: ToolContext, fact: str):
-    _id, created = store(ctx).remember(fact, source="user")
+    s = store(ctx)
+    _id, created = s.remember(fact, source="user")
+    replaced = getattr(s, "last_replaced", None)
+    if replaced:
+        return {"id": _id, "new": True, "replaced": replaced}, f"Updated: it replaces “{replaced.rstrip('.')}”"
     return {"id": _id, "new": created}, "I'll remember that" if created else "I already had that noted"
 
 
-@tool("recall", group="memory", description="Look up what you remember about a topic (facts and past conversations).",
-      parameters=P(query=("string", "Topic or keywords", True)))
+@tool("recall", group="memory", description="Look up what you remember about a topic, or everything you know about the user.",
+      parameters=P(query=("string", "Topic or keywords; 'the user' for everything known about them", True)))
 def recall(ctx: ToolContext, query: str):
     s = store(ctx)
-    hits = s.recall(query, limit=6, min_score=0.45) + s.recall_episodes(query)
+    generic = query.strip().lower() in {"", "me", "user", "the user", "about me", "about the user", "everything", "all"}
+    hits = [] if generic else s.recall(query, limit=6, min_score=0.45) + s.recall_episodes(query)
+    if not hits:
+        # Generic question, or nothing close enough: fall back to the most recent facts so "what do you know
+        # about me?" never comes back empty while there is something remembered.
+        hits = [i for i in s.list_items(limit=12) if i["kind"] == "fact"][:10]
     if not hits:
         return [], f"nothing remembered about {query}"
-    return hits, "; ".join(h["text"] for h in hits[:5])
+    return hits, "; ".join(h["text"] for h in hits[:8])
 
 
 @tool("forget", group="memory", description="Delete remembered facts matching a topic.",

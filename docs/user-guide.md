@@ -44,7 +44,9 @@ with “you're using the mouse” if you keep going.
 
 - **You** (top of the Persona tab): what Wisp calls you. If it mispronounces your name, fill in *Say it
   as* with the name spelled the way it sounds (“Dillon” for Dyllon) and press *Hear it*; the respelling
-  changes only the pronunciation, never how your name is written.
+  changes only the pronunciation, never how your name is written. *Location* is used for weather, local
+  questions and “where am I?”: type a city, or leave it blank and let Wisp guess it from your network
+  connection (city-level, approximate; turn the checkbox off to never look it up).
 - **Persona**: switch personas, duplicate the built-in Wisp to edit its name, wake phrase, voice and
   system prompt, import packs (.zip), choose a VRM avatar, and choose whether the avatar is always on
   screen or only appears when summoned (also in the tray menu).
@@ -58,8 +60,10 @@ with “you're using the mouse” if you keep going.
 ## Memory
 
 Wisp keeps short facts you tell it (“my dog is Biscuit”) and a two-sentence summary of each
-conversation, in `%LOCALAPPDATA%\Familiar\memory.sqlite`. It recalls them when relevant. Say “forget
-what you know about …”, or delete items in Settings. Nothing is uploaded.
+conversation, in `%LOCALAPPDATA%\Familiar\memory.sqlite`. Anything you explicitly ask it to remember is
+always in front of it in later conversations, whatever you ask about; facts it picked up on its own are
+recalled when relevant. “What do you know about me?” lists them. Say “forget what you know about …”, or
+delete items in Settings. Nothing is uploaded.
 
 ## Avatars
 

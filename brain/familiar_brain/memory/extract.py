@@ -8,6 +8,7 @@ and at boot if unsummarized turns were left behind by a previous run.
 from __future__ import annotations
 
 import logging
+import re
 
 from ..llm import LlmClient
 from .store import MemoryStore
@@ -29,9 +30,24 @@ PROMPT = (
     "- summary: two or three plain sentences about what the user wanted and what happened.\n"
     "- facts: durable things about the USER worth remembering later: their name, people and pets, preferences, "
     "places, routines, work, projects, devices, dislikes. Write each as a short third-person sentence starting with "
-    "'The user'. Do NOT include one-off requests (opening an app, a timer), the assistant's own words, the current "
-    "time, or anything already in the known facts list. Return an empty facts array if nothing qualifies."
+    "'The user'. Only use what the USER said in their own lines; never turn the assistant's replies, guesses or "
+    "greetings into facts. Do NOT include one-off requests (opening an app, a timer), the current time, test or "
+    "example phrases, or anything already in the known facts list. Return an empty facts array if nothing qualifies."
 )
+
+
+_STOP = {"user", "the", "their", "they", "them", "that", "this", "with", "have", "has", "likes", "like", "prefers", "wants",
+         "named", "name", "called", "about", "from", "into", "also", "very", "really", "some", "when", "what", "which"}
+
+
+def grounded(fact: str, user_text: str) -> bool:
+    """A fact counts only if the user said at least one of its content words. The extractor otherwise turns the
+    assistant's own claims ("you take your coffee black", repeated from an example) into memories."""
+    words = [w for w in re.findall(r"[a-z0-9']+", fact.lower()) if len(w) >= 4 and w not in _STOP]
+    if not words:
+        return False
+    hay = user_text.lower()
+    return any(w.rstrip("s") in hay for w in words)
 
 
 def _transcript(turns: list[dict]) -> str:
@@ -56,9 +72,10 @@ async def extract_and_summarize(llm: LlmClient, store: MemoryStore, turns: list[
     summary = " ".join(str(out.get("summary", "")).split())[:800]
     facts = [str(f).strip() for f in out.get("facts", []) if isinstance(f, str) and len(f.strip()) > 8][:8]
     new_facts, skipped = [], 0
+    user_text = "\n".join(t["text"] for t in turns if t["role"] == "user")
     for f in facts:
         low = f.lower()
-        if any(w in low for w in ("assistant", "wisp said", "timer was set", "opened ")):
+        if any(w in low for w in ("assistant", "wisp said", "timer was set", "opened ")) or not grounded(f, user_text):
             skipped += 1
             continue
         _id, created = store.remember(f, source="extracted")

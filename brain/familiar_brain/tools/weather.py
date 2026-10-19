@@ -12,10 +12,15 @@ WMO = {0: "clear", 1: "mostly clear", 2: "partly cloudy", 3: "overcast", 45: "fo
        86: "snow showers", 95: "thunderstorm", 96: "thunderstorm with hail", 99: "thunderstorm with hail"}
 
 
-@tool("get_weather", group="web", description="Current weather and today's forecast for a city or place (temperature, conditions, wind, rain chance).",
-      parameters=P(place=("string", "City or place name, e.g. 'Seattle' or 'Paris, France'", True),
+@tool("get_weather", group="web", description="Current weather and today's forecast (temperature, conditions, wind, rain chance). Omit place for where the user is.",
+      parameters=P(place=("string", "City or place name, e.g. 'Seattle' or 'Paris, France'; omit for the user's own location", False),
                    units=("string", "fahrenheit or celsius (default fahrenheit)", ["fahrenheit", "celsius"], False)), timeout_s=20)
-async def get_weather(ctx: ToolContext, place: str, units: str = "fahrenheit"):
+async def get_weather(ctx: ToolContext, place: str | None = None, units: str = "fahrenheit"):
+    if not place or not str(place).strip():
+        here = getattr(ctx.extra.get("brain"), "location", None)
+        place = (here()[0] if callable(here) else None) or ""
+        if not place:
+            return {"ok": False}, "I don't know where you are yet; tell me a city or set your location in Settings"
     async with httpx.AsyncClient(timeout=12) as c:
         g = await c.get("https://geocoding-api.open-meteo.com/v1/search", params={"name": place, "count": 1, "language": "en", "format": "json"})
         g.raise_for_status()

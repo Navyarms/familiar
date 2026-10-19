@@ -36,6 +36,8 @@ CASES: list[tuple[str, set[str], callable | None]] = [
     ("How much battery do I have left?", {"system_info"}, None),
     ("What's the volume at right now?", {"get_volume", "system_info"}, None),
     ("What day is it today?", {""}, None),  # time rides on the note; no tool needed
+    ("What's the weather like outside?", {"get_weather"}, lambda a: not a.get("place")),  # user's own location
+    ("Where am I right now?", {""}, None),  # location sits in the system prompt; no tool needed
     # windows
     ("Bring Chrome to the front.", {"focus_window"}, lambda a: "chrome" in str(a.get("title", "")).lower()),
     ("Snap the Notepad window to the right.", {"window_action"}, lambda a: a.get("action") == "snap_right"),

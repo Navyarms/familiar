@@ -16,6 +16,49 @@ import httpx
 log = logging.getLogger(__name__)
 
 
+def _tie_to_this_process(proc: subprocess.Popen):
+    """Windows: put the child in a job object that kills it when the last handle closes, i.e. when this process
+    exits for any reason (TerminateProcess from the shell, a crash, a test harness). Returns the job handle to keep
+    alive; None elsewhere or on failure."""
+    if sys.platform != "win32":
+        return None
+    try:
+        import ctypes
+        from ctypes import wintypes
+
+        k32 = ctypes.windll.kernel32
+
+        class IO_COUNTERS(ctypes.Structure):
+            _fields_ = [(n, ctypes.c_ulonglong) for n in ("ReadOperationCount", "WriteOperationCount", "OtherOperationCount",
+                                                           "ReadTransferCount", "WriteTransferCount", "OtherTransferCount")]
+
+        class BASIC_LIMIT(ctypes.Structure):
+            _fields_ = [("PerProcessUserTimeLimit", ctypes.c_longlong), ("PerJobUserTimeLimit", ctypes.c_longlong),
+                        ("LimitFlags", wintypes.DWORD), ("MinimumWorkingSetSize", ctypes.c_size_t),
+                        ("MaximumWorkingSetSize", ctypes.c_size_t), ("ActiveProcessLimit", wintypes.DWORD),
+                        ("Affinity", ctypes.c_size_t), ("PriorityClass", wintypes.DWORD), ("SchedulingClass", wintypes.DWORD)]
+
+        class EXTENDED_LIMIT(ctypes.Structure):
+            _fields_ = [("BasicLimitInformation", BASIC_LIMIT), ("IoInfo", IO_COUNTERS), ("ProcessMemoryLimit", ctypes.c_size_t),
+                        ("JobMemoryLimit", ctypes.c_size_t), ("PeakProcessMemoryUsed", ctypes.c_size_t), ("PeakJobMemoryUsed", ctypes.c_size_t)]
+
+        job = k32.CreateJobObjectW(None, None)
+        if not job:
+            return None
+        info = EXTENDED_LIMIT()
+        info.BasicLimitInformation.LimitFlags = 0x2000  # JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE
+        if not k32.SetInformationJobObject(job, 9, ctypes.byref(info), ctypes.sizeof(info)):  # JobObjectExtendedLimitInformation
+            k32.CloseHandle(job)
+            return None
+        if not k32.AssignProcessToJobObject(job, wintypes.HANDLE(proc._handle)):  # type: ignore[attr-defined]
+            k32.CloseHandle(job)
+            return None
+        return job
+    except Exception as e:  # noqa: BLE001 - best effort; the normal stop() path still works
+        log.debug("job object not set up: %s", e)
+        return None
+
+
 def free_port() -> int:
     s = socket.socket()
     s.bind(("127.0.0.1", 0))
@@ -40,6 +83,8 @@ class LlamaServer:
     def alive(self) -> bool:
         return self.proc is not None and self.proc.poll() is None
 
+    _job = None
+
     async def start(self, timeout_s: float = 300) -> None:
         self.port = free_port()
         args = [str(self.exe), "-m", str(self.model), "--host", "127.0.0.1", "--port", str(self.port),
@@ -55,6 +100,7 @@ class LlamaServer:
         log.info("starting llama-server: %s", " ".join(args))
         self.proc = subprocess.Popen(args, stdout=self._log_fh, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL,
                                      creationflags=flags, env=env, cwd=str(self.exe.parent))
+        self._job = _tie_to_this_process(self.proc)  # llama-server dies with the brain, even on a hard kill
         t0 = time.monotonic()
         async with httpx.AsyncClient(timeout=2) as client:
             while time.monotonic() - t0 < timeout_s:

@@ -4,9 +4,11 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import time
 from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
+from pathlib import Path
 
 import httpx
 
@@ -112,6 +114,9 @@ class LlmClient:
             body["parallel_tool_calls"] = True
         t0 = time.monotonic()
         partial: dict[int, ToolCall] = {}
+        dump = os.environ.get("FAMILIAR_DUMP_REQUESTS")  # dev: path of a JSON file that receives the last request body
+        if dump:
+            Path(dump).write_text(json.dumps(body, indent=1, ensure_ascii=False), encoding="utf-8")
         async with self._client.stream("POST", f"{self.base_url}/v1/chat/completions", json=body) as r:
             if r.status_code >= 400:
                 err = (await r.aread()).decode(errors="replace")[:500]

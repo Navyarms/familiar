@@ -23,6 +23,7 @@ from .memory import Embedder, MemoryStore, extract_and_summarize
 from .models import ModelManager
 from .persona import Persona, list_personas, load_persona
 from .persona import manage as personas
+from .profile import detect_location, location_of
 from .tools import REGISTRY, ToolContext
 from .tts import KokoroTTS
 
@@ -190,6 +191,28 @@ class Brain:
 
         return {"type": "settings.items", "settings": asdict(self.settings)}
 
+    _warmed_memory_version = -1
+
+    def _pinned(self) -> list[str]:
+        return self.memory.pinned() if self.settings.memory_enabled else []
+
+    def location(self) -> tuple[str | None, str]:
+        """(label, source): the user's location from settings, else the cached network guess, else (None, 'none')."""
+        return location_of(self.settings)
+
+    async def _detect_location(self, rewarm: bool = False) -> None:
+        """Fill settings.location_detected from the network when allowed and no location was typed in."""
+        if self.settings.user_location or not self.settings.location_detect or not self.settings.web_enabled:
+            return
+        label = await detect_location()
+        if label and label != self.settings.location_detected:
+            self.settings.location_detected = label
+            self.settings.save(self.paths.settings_file)
+            log.info("location (network): %s", label)
+            await self.send(self.settings_items())
+            if rewarm:
+                await self.warm()
+
     def _apply_pronunciations(self) -> None:
         """The user's name may be spelled one way and said another; TTS gets the spoken form."""
         if not self.tts:
@@ -308,6 +331,7 @@ class Brain:
             log.exception("kokoro failed")
             await self.send({"type": "error", "code": "tts", "message": f"voice unavailable: {e}", "fatal": False})
             self.tts = None
+        await self._detect_location()  # before the warm-up so the cached prefix already carries it
         await self.set_state("booting", "warming up")
         await self.warm()
         try:
@@ -389,7 +413,10 @@ class Brain:
             return
         try:
             use_tools = bool(self.registry.available())
-            await self.llm.warm([{"role": "system", "content": build_system_prompt(self.persona, tools=use_tools, user_name=self.settings.user_name)},
+            loc, src = self.location()
+            self._warmed_memory_version = self.memory.version
+            await self.llm.warm([{"role": "system", "content": build_system_prompt(self.persona, tools=use_tools, user_name=self.settings.user_name,
+                                                                                      location=loc, location_source=src, pinned=self._pinned())},
                                  *(FEW_SHOT if use_tools else [])],
                                 tools=self.registry.openai_tools() if use_tools else None)
         except Exception as e:
@@ -411,10 +438,12 @@ class Brain:
             await self.send({"type": "error", "code": "not_ready", "message": "still starting up", "fatal": False})
             return
         await self.interrupt()
-        memories = self.memory.context_for(text) if self.settings.memory_enabled else []
+        pinned = self._pinned()
+        memories = self.memory.context_for(text, exclude=set(pinned)) if self.settings.memory_enabled else []
         turn = Turn(llm=self.llm, tts=self.tts, persona=self.persona, history=self.history, send=self.send, speak=speak,
                     registry=self.registry, ctx=self._ctx(), confirm=self.confirm, memories=memories,
-                    user_name=self.settings.user_name)
+                    user_name=self.settings.user_name, location=self.location()[0], location_source=self.location()[1],
+                    pinned=pinned)
         await self.send({"type": "transcript.final", "text": text})
         self._last_activity = time.monotonic()
 
@@ -437,6 +466,8 @@ class Brain:
                     await self.set_state("idle")
                 self.turn_task = None
                 await self._flush_announcements()
+                if self.memory.version != self._warmed_memory_version:
+                    asyncio.create_task(self.warm())  # a remember/forget changed the system prompt; re-warm while idle
 
         self.turn_task = asyncio.create_task(_run())
 
@@ -552,8 +583,15 @@ class Brain:
                 self.registry.configure(self.settings)
                 await self.send(self.tools_info())
                 await self.warm()
-            elif "user_name" in msg.settings and not switched:
-                await self.warm()  # the name sits in the system prompt
+            elif any(k in msg.settings for k in ("user_name", "user_location", "location_detect")) and not switched:
+                if "location_detect" in msg.settings or ("user_location" in msg.settings and not self.settings.user_location):
+                    if not self.settings.location_detect:
+                        self.settings.location_detected = None
+                        self.settings.save(self.paths.settings_file)
+                        await self.send(self.settings_items())
+                    else:
+                        await self._detect_location()
+                await self.warm()  # name and location sit in the system prompt
             if "user_name" in msg.settings or "user_name_spoken" in msg.settings:
                 self._apply_pronunciations()
             voice_keys = ("voice_enabled", "mic_device", "wake_word", "barge_in_vad", "vad_threshold", "kws_threshold")
