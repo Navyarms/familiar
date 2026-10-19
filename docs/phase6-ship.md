@@ -83,6 +83,12 @@ workflow would get the secrets. Self-signing is pointless for SmartScreen.
   tag, with the blockmap in one and the installer + `latest.yml` in the other. The drafts were merged by hand and
   the workflow now builds with `--publish never` and uploads with `gh release create/upload`.
 
+## 0.1.1 (2026-10-19)
+
+First-day follow-up: VRM picker applies immediately, avatar presence option (always / only when summoned),
+user name with a spoken respelling. Built by the reworked workflow (`--publish never` + `gh release create`)
+in under 4 minutes; one release, three assets, `latest.yml` points at `Familiar-Setup-0.1.1.exe`.
+
 ## Not done
 
 - An original Wisp VRM (the orb ships as the fallback; the dev machine uses a third-party sample via override).

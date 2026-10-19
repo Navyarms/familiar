@@ -37,6 +37,17 @@ export class Avatar {
   private shape: string = 'aa';
   state: 'idle' | 'thinking' | 'speaking' | 'listening' | 'booting' = 'booting';
 
+  // Procedural motion state (no animation clips: everything is layered sines + scheduled events, eased).
+  private lookTarget = new THREE.Object3D(); // VRM look-at target (eyes)
+  private gazeGoal = new THREE.Vector3(0, 1.3, 3);
+  private nextSaccadeAt = 0;
+  private glance = { yaw: 0, pitch: 0, roll: 0 }; // current eased head glance
+  private glanceGoal = { yaw: 0, pitch: 0, roll: 0 };
+  private nextGlanceAt = 0;
+  private blink = { nextAt: 1.5, startedAt: -1, double: false };
+  private speakEnergy = 0; // slow follower of mouth amplitude, drives nods and hand gestures
+  private stateMix = { listening: 0, thinking: 0, speaking: 0 }; // eased 0..1 per state
+
   constructor(canvasParent: HTMLElement) {
     this.renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true, premultipliedAlpha: true });
     this.renderer.setClearColor(0x000000, 0);
@@ -74,12 +85,14 @@ export class Avatar {
         VRMUtils.combineSkeletons(gltf.scene);
         VRMUtils.rotateVRM0(vrm);
         vrm.scene.traverse((o) => (o.frustumCulled = false));
-        const l = vrm.humanoid.getNormalizedBoneNode('leftUpperArm');
-        const r = vrm.humanoid.getNormalizedBoneNode('rightUpperArm');
-        if (l) l.rotation.z = -1.2;
-        if (r) r.rotation.z = 1.2;
+        if (vrm.lookAt) {
+          this.scene.add(this.lookTarget);
+          this.lookTarget.position.copy(this.gazeGoal);
+          vrm.lookAt.target = this.lookTarget;
+        }
         this.scene.add(vrm.scene);
         this.vrm = vrm;
+        this.animateHumanoid(0, 0, true); // settle into the rest pose before the first frame
         return `vrm ${vrm.meta?.metaVersion ?? '0'}`;
       } catch (e) {
         console.error('VRM load failed, using orb', e);
@@ -131,27 +144,135 @@ export class Avatar {
     this.shape = VISEMES.includes(shape as any) ? shape : this.shape;
   }
 
+  /** Smooth pseudo-noise in [-1, 1]: three incommensurate sines, so nothing visibly repeats. */
+  private static noise(t: number, seed: number): number {
+    return (Math.sin(t * 0.61 + seed) + 0.5 * Math.sin(t * 1.37 + seed * 2.1) + 0.25 * Math.sin(t * 2.93 + seed * 0.7)) / 1.75;
+  }
+
+  /** Procedural body motion on the normalized humanoid: rest pose + breathing + weight shift + glances + state. */
+  private animateHumanoid(t: number, dt: number, snap = false): void {
+    if (!this.vrm) return;
+    const h = this.vrm.humanoid;
+    const bone = (n: Parameters<typeof h.getNormalizedBoneNode>[0]) => h.getNormalizedBoneNode(n);
+    const ease = (cur: number, goal: number, rate: number) => (snap ? goal : cur + (goal - cur) * Math.min(1, dt * rate));
+    const N = Avatar.noise;
+
+    // State weights ease in and out so transitions never pop.
+    for (const k of Object.keys(this.stateMix) as (keyof typeof this.stateMix)[])
+      this.stateMix[k] = ease(this.stateMix[k], this.state === k ? 1 : 0, 3);
+    const { listening: L, thinking: T, speaking: S } = this.stateMix;
+    this.speakEnergy = ease(this.speakEnergy, this.smoothedAmp, 6);
+    const E = this.speakEnergy * S;
+
+    // Breathing (4.2 s cycle) and a slow weight shift between the feet (~9 s, noise-driven).
+    const breath = 0.5 + 0.5 * Math.sin(t * 1.5);
+    const shift = N(t * 0.35, 1.0);
+    const hips = bone('hips');
+    if (hips) {
+      hips.position.x = shift * 0.018;
+      hips.position.y = -Math.abs(shift) * 0.005;
+      hips.rotation.z = -shift * 0.035;
+      hips.rotation.y = shift * 0.04 + N(t * 0.2, 4.0) * 0.025;
+      hips.rotation.x = S * 0.015; // tiny forward lean when speaking
+    }
+    const spine = bone('spine');
+    if (spine) {
+      spine.rotation.z = shift * 0.02;
+      spine.rotation.x = -0.01 * breath + N(t * 0.3, 2.0) * 0.012 + L * 0.03;
+      spine.rotation.y = N(t * 0.25, 3.0) * 0.02;
+    }
+    const chest = bone('chest') ?? bone('upperChest');
+    if (chest) chest.rotation.x = -0.022 * breath - L * 0.02;
+
+    // Shoulders rise a hair with each breath; arms hang relaxed with slow drift and talk-gestures.
+    for (const side of ['left', 'right'] as const) {
+      const sgn = side === 'left' ? -1 : 1; // normalized space: left arm lowers with negative z
+      const seed = side === 'left' ? 10 : 20;
+      const sh = bone(`${side}Shoulder`);
+      if (sh) sh.rotation.z = sgn * (0.02 * breath);
+      // Normalized rig = T-pose with the arm along ±X, facing +Z. Lowering the arm is a rotation about Z;
+      // swinging it forward (and bending the elbow forward) is a rotation about Y: left needs -Y, right +Y.
+      const up = bone(`${side}UpperArm`);
+      if (up) {
+        const gesture = E * (0.10 * Math.sin(t * 2.7 + seed) + 0.05) + T * (side === 'right' ? 0.10 : 0);
+        up.rotation.z = sgn * (1.22 - 0.06 * breath - gesture * 0.5);
+        up.rotation.y = sgn * (0.06 + N(t * 0.4, seed) * 0.03 + gesture * 0.8); // a touch forward, more when talking
+        up.rotation.x = N(t * 0.35, seed + 3) * 0.02;
+      }
+      const lo = bone(`${side}LowerArm`);
+      if (lo) {
+        const bend = 0.32 + N(t * 0.45, seed + 1) * 0.05 + E * (0.30 + 0.2 * Math.sin(t * 2.7 + seed + 1.2)) + T * (side === 'right' ? 0.75 : 0.05);
+        lo.rotation.y = sgn * bend; // elbow flexion: hand comes forward
+        lo.rotation.z = sgn * 0.04; // slightly inward
+        lo.rotation.x = 0;
+      }
+      const hand = bone(`${side}Hand`);
+      if (hand) {
+        hand.rotation.z = sgn * 0.08; // relaxed wrist, fingers toward the thigh
+        hand.rotation.y = N(t * 0.5, seed + 2) * 0.05 + E * 0.15 * Math.sin(t * 2.7 + seed + 2);
+        hand.rotation.x = 0;
+      }
+      // Fingers: slight natural curl toward the palm instead of splayed flat hands.
+      for (const f of ['Index', 'Middle', 'Ring', 'Little'] as const)
+        for (const seg of ['Proximal', 'Intermediate', 'Distal'] as const) {
+          const b = bone(`${side}${f}${seg}` as any);
+          if (b) b.rotation.z = sgn * (seg === 'Proximal' ? 0.28 : 0.22) * (f === 'Index' ? 0.6 : 1);
+        }
+    }
+
+    // Head: slow sway + occasional glances (new goal every 2.5–6 s) + state posture + nods with the voice.
+    if (t >= this.nextGlanceAt) {
+      this.nextGlanceAt = t + 2.5 + Math.random() * 3.5;
+      const r = Math.random();
+      this.glanceGoal = r < 0.45 ? { yaw: 0, pitch: 0, roll: 0 }
+        : { yaw: (Math.random() - 0.5) * 0.5, pitch: (Math.random() - 0.5) * 0.25, roll: (Math.random() - 0.5) * 0.12 };
+    }
+    for (const k of ['yaw', 'pitch', 'roll'] as const) this.glance[k] = ease(this.glance[k], this.glanceGoal[k], 1.6);
+    const idleYaw = N(t * 0.5, 5.0) * 0.09, idlePitch = N(t * 0.6, 6.0) * 0.04, idleRoll = N(t * 0.4, 7.0) * 0.035;
+    const nod = -E * (0.05 + 0.04 * Math.sin(t * 5.1)) + S * N(t * 1.3, 8.0) * 0.03;
+    const head = bone('head');
+    const neck = bone('neck');
+    const yaw = idleYaw + this.glance.yaw * (1 - L * 0.8) + T * 0.16 + S * N(t * 0.9, 9.0) * 0.05;
+    const pitch = idlePitch + this.glance.pitch * (1 - L * 0.8) + T * -0.10 + L * 0.06 + nod;
+    const roll = idleRoll + this.glance.roll + L * 0.07 + T * 0.05;
+    if (head) head.rotation.set(pitch * 0.7, yaw * 0.7, roll * 0.7);
+    if (neck) neck.rotation.set(pitch * 0.3, yaw * 0.3, roll * 0.3);
+
+    // Eyes: saccades toward a point near the viewer; locked on the viewer while listening, up-right while thinking.
+    if (this.vrm.lookAt) {
+      if (t >= this.nextSaccadeAt) {
+        this.nextSaccadeAt = t + 0.8 + Math.random() * 2.5;
+        this.gazeGoal.set((Math.random() - 0.5) * 1.2, 1.3 + (Math.random() - 0.5) * 0.5, 3);
+      }
+      const goal = new THREE.Vector3().copy(this.gazeGoal);
+      goal.lerp(new THREE.Vector3(0, 1.3, 3), L);
+      goal.lerp(new THREE.Vector3(1.2, 2.2, 3), T * 0.7);
+      this.lookTarget.position.lerp(goal, snap ? 1 : Math.min(1, dt * 12));
+    }
+  }
+
   update(): void {
     const dt = Math.min(this.clock.getDelta(), 0.1);
     const t = this.clock.elapsedTime;
     const now = performance.now() / 1000;
     if (this.vrm) {
-      const h = this.vrm.humanoid;
-      const head = h.getNormalizedBoneNode('head');
-      const neck = h.getNormalizedBoneNode('neck');
-      const spine = h.getNormalizedBoneNode('spine');
-      const sway = this.state === 'thinking' ? 0.18 : 0.1;
-      if (head) {
-        head.rotation.y = Math.sin(t * 0.6) * sway + (this.state === 'thinking' ? 0.12 : 0);
-        head.rotation.x = Math.sin(t * 1.1) * 0.04 + (this.state === 'thinking' ? 0.08 : 0);
-        head.rotation.z = Math.sin(t * 0.4) * 0.03;
-      }
-      if (neck) neck.rotation.y = Math.sin(t * 0.6 + 0.3) * 0.04;
-      if (spine) spine.position.y = Math.sin(t * 1.5) * 0.004; // breathing
+      this.animateHumanoid(t, dt);
       const em = this.vrm.expressionManager;
       if (em) {
-        const blinkPhase = t % 4.3;
-        em.setValue('blink', blinkPhase < 0.13 ? Math.sin((blinkPhase / 0.13) * Math.PI) : 0);
+        // Blinks: random 2–6 s apart, 0.16 s each, sometimes a double; more often while thinking.
+        if (this.blink.startedAt < 0 && t >= this.blink.nextAt) {
+          this.blink.startedAt = t;
+        }
+        let blinkValue = 0;
+        if (this.blink.startedAt >= 0) {
+          const ph = (t - this.blink.startedAt) / 0.16;
+          if (ph >= 1) {
+            this.blink.startedAt = -1;
+            if (!this.blink.double && Math.random() < 0.15) { this.blink.double = true; this.blink.nextAt = t + 0.12; }
+            else { this.blink.double = false; this.blink.nextAt = t + (this.state === 'thinking' ? 1.5 : 2.5) + Math.random() * 3.5; }
+          } else blinkValue = Math.sin(ph * Math.PI);
+        }
+        em.setValue('blink', blinkValue);
         for (const v of VISEMES) em.setValue(v, 0);
         if (this.smoothedAmp > 0.02) {
           em.setValue(this.shape, Math.min(1, this.smoothedAmp * 1.1));
