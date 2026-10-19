@@ -12,7 +12,7 @@ can swap or share.
 - **Remembers:** persistent local memory you can inspect and delete.
 - **Yours to customize:** VRM avatar, voice, wake phrase, hotkeys, system prompt, tool permissions.
 
-Status: **v0.1 candidate** — all six phases built from source; the Windows installer, auto-update and docs are in place, and the first public release is pending. Say “hey Wisp” (or press Ctrl+Shift+M, or type), ask questions or tell it to do things: open apps, click and type in them by element name, read windows, volume, files, clipboard, timers, weather, web, Bluetooth. It remembers what you tell it across restarts (see and delete everything in Settings). Risky actions ask first; it pauses while you use the mouse; Ctrl+Alt+Esc stops everything. Docs: [user guide](docs/user-guide.md), [persona packs](docs/persona-pack-spec.md), [tool safety](docs/tool-safety.md), [PLAN.md](PLAN.md).
+Status: **v0.1.0 released** ([download the installer](https://github.com/Navyarms/familiar/releases/latest)) — all six phases built; Windows installer, auto-update and docs are in place. The installer is unsigned for now (SmartScreen: *More info → Run anyway*). Say “hey Wisp” (or press Ctrl+Shift+M, or type), ask questions or tell it to do things: open apps, click and type in them by element name, read windows, volume, files, clipboard, timers, weather, web, Bluetooth. It remembers what you tell it across restarts (see and delete everything in Settings). Risky actions ask first; it pauses while you use the mouse; Ctrl+Alt+Esc stops everything. Docs: [user guide](docs/user-guide.md), [persona packs](docs/persona-pack-spec.md), [tool safety](docs/tool-safety.md), [PLAN.md](PLAN.md).
 
 ## Run from source (Windows)
 

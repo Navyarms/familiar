@@ -1,8 +1,8 @@
 # Phase 6 — Polish and ship v0.1
 
-Status 2026-10-18: settings UI, persona manager, voice preview, packaging (PyInstaller brain + NSIS installer +
-auto-update wiring), startup-with-Windows and the user docs are done from source. The public repo and the first
-Release are not created yet (they need the owner's GitHub account). Code signing: unsigned for v0.1 (see below).
+Status 2026-10-19: shipped. Public repo https://github.com/Navyarms/familiar (MIT), Release **v0.1.0** built by
+the release workflow on `windows-latest` with `Familiar-Setup-0.1.0.exe` (216 MB), its blockmap and `latest.yml`.
+Code signing: unsigned for v0.1 (see below).
 
 ## Agent reliability pass (done first, per the owner's priority: actions over vision, no improper tools)
 
@@ -73,10 +73,18 @@ Signing** (~$10/month, needs an Azure account with a verified identity) or a sta
 (~$200–400/year). electron-builder supports both through `win.signtoolOptions`/`azureSignOptions`; the release
 workflow would get the secrets. Self-signing is pointless for SmartScreen.
 
-## Not done / needs the owner
+## First release (2026-10-19)
 
-- Create the public GitHub repo (MIT) and push; set `publish.owner/repo` and `homepage` in
-  `apps/shell/package.json`; tag `v0.1.0` to produce the first Release through the workflow.
+- Repo created with `gh repo create Navyarms/familiar --public --source . --push`; tag `v0.1.0` triggered the
+  workflow, which built brain + installer in about 3 minutes.
+- Surprises on the first run, all fixed on `main`: `build/icon.ico` was ignored by the PyInstaller `build/` rule
+  (force-added); ruff flagged an unused `noqa`; the schema check failed because the generator wrote CRLF on the
+  Windows runner (`newline="\n"`); electron-builder's GitHub publisher created **two draft releases** for the one
+  tag, with the blockmap in one and the installer + `latest.yml` in the other. The drafts were merged by hand and
+  the workflow now builds with `--publish never` and uploads with `gh release create/upload`.
+
+## Not done
+
 - An original Wisp VRM (the orb ships as the fallback; the dev machine uses a third-party sample via override).
 - Clean-VM install test (the exit criterion); the local install test covers the installer mechanics only.
 - The 10-minute human quiet-room test (Phase 2) and the email flow (Phase 4) remain open items.
