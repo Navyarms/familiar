@@ -81,6 +81,8 @@ class Paths:
 @dataclass
 class Settings:
     persona_id: str = "wisp"
+    user_name: str | None = None  # what the persona calls the user
+    user_name_spoken: str | None = None  # optional respelling used only by TTS ("Dillon" for "Dyllon")
     tier_override: str | None = None  # "T0".."T4" or None = auto
     custom_chat_gguf: str | None = None
     custom_mmproj_gguf: str | None = None

@@ -190,6 +190,13 @@ class Brain:
 
         return {"type": "settings.items", "settings": asdict(self.settings)}
 
+    def _apply_pronunciations(self) -> None:
+        """The user's name may be spelled one way and said another; TTS gets the spoken form."""
+        if not self.tts:
+            return
+        name, spoken = self.settings.user_name, self.settings.user_name_spoken
+        self.tts.pronunciations = {name: spoken} if name and spoken and name.strip().lower() != spoken.strip().lower() else {}
+
     async def preview_voice(self, voice: str, speed: float, text: str | None) -> None:
         if not self.tts:
             await self.send({"type": "error", "code": "tts", "message": "voice engine not loaded", "fatal": False})
@@ -295,6 +302,7 @@ class Brain:
             model, voices = self.models.kokoro_paths()
             self.tts = KokoroTTS(model, voices)
             await self.tts.load()
+            self._apply_pronunciations()
             await self.tts.synth("Hello.", self.persona.voice, self.persona.voice_speed)  # first synth is slow; do it now
         except Exception as e:
             log.exception("kokoro failed")
@@ -381,7 +389,7 @@ class Brain:
             return
         try:
             use_tools = bool(self.registry.available())
-            await self.llm.warm([{"role": "system", "content": build_system_prompt(self.persona, tools=use_tools)},
+            await self.llm.warm([{"role": "system", "content": build_system_prompt(self.persona, tools=use_tools, user_name=self.settings.user_name)},
                                  *(FEW_SHOT if use_tools else [])],
                                 tools=self.registry.openai_tools() if use_tools else None)
         except Exception as e:
@@ -405,7 +413,8 @@ class Brain:
         await self.interrupt()
         memories = self.memory.context_for(text) if self.settings.memory_enabled else []
         turn = Turn(llm=self.llm, tts=self.tts, persona=self.persona, history=self.history, send=self.send, speak=speak,
-                    registry=self.registry, ctx=self._ctx(), confirm=self.confirm, memories=memories)
+                    registry=self.registry, ctx=self._ctx(), confirm=self.confirm, memories=memories,
+                    user_name=self.settings.user_name)
         await self.send({"type": "transcript.final", "text": text})
         self._last_activity = time.monotonic()
 
@@ -543,6 +552,10 @@ class Brain:
                 self.registry.configure(self.settings)
                 await self.send(self.tools_info())
                 await self.warm()
+            elif "user_name" in msg.settings and not switched:
+                await self.warm()  # the name sits in the system prompt
+            if "user_name" in msg.settings or "user_name_spoken" in msg.settings:
+                self._apply_pronunciations()
             voice_keys = ("voice_enabled", "mic_device", "wake_word", "barge_in_vad", "vad_threshold", "kws_threshold")
             if self.ready and any(k in msg.settings for k in voice_keys):
                 if self.settings.voice_enabled:

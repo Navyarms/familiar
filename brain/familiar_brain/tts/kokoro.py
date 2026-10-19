@@ -9,6 +9,7 @@ from __future__ import annotations
 import asyncio
 import base64
 import logging
+import re
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -39,11 +40,20 @@ class Synth:
         return base64.b64encode(self.pcm16).decode("ascii")
 
 
+def respell(text: str, pronunciations: dict[str, str]) -> str:
+    """Replace whole words with their spoken respelling (case-insensitive). Used for names the G2P gets wrong."""
+    for word, spoken in pronunciations.items():
+        if word and spoken and word.strip() and spoken.strip():
+            text = re.sub(rf"(?<!\w){re.escape(word.strip())}(?!\w)", spoken.strip(), text, flags=re.IGNORECASE)
+    return text
+
+
 class KokoroTTS:
     def __init__(self, model: Path, voices: Path):
         self.model_path, self.voices_path = model, voices
         self._k = None
         self._lock = asyncio.Lock()
+        self.pronunciations: dict[str, str] = {}  # written form -> how to say it; applied to every synth
 
     async def load(self) -> None:
         def _load():
@@ -66,6 +76,8 @@ class KokoroTTS:
 
     def _synth_sync(self, text: str, voice: str, speed: float, lang: str) -> Synth:
         t0 = time.monotonic()
+        if self.pronunciations:
+            text = respell(text, self.pronunciations)
         audio, sr = self._k.create(text, voice=voice, speed=speed, lang=lang)
         audio = np.asarray(audio, dtype=np.float32)
         if audio.ndim > 1:

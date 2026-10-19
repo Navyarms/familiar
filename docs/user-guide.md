@@ -42,6 +42,9 @@ with “you're using the mouse” if you keep going.
 
 ## Settings (tray icon → Settings…)
 
+- **You** (top of the Persona tab): what Wisp calls you. If it mispronounces your name, fill in *Say it
+  as* with the name spelled the way it sounds (“Dillon” for Dyllon) and press *Hear it*; the respelling
+  changes only the pronunciation, never how your name is written.
 - **Persona**: switch personas, duplicate the built-in Wisp to edit its name, wake phrase, voice and
   system prompt, import packs (.zip), choose a VRM avatar, and choose whether the avatar is always on
   screen or only appears when summoned (also in the tray menu).

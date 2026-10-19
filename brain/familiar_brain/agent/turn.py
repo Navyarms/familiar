@@ -88,8 +88,14 @@ FEW_SHOT: list[dict] = [
 ]
 
 
-def build_system_prompt(persona: Persona, *, tools: bool = False, memories: list[str] | None = None) -> str:
+USER_NAME_NOTE = "\n\nThe user's name is {name}. Use it now and then, the way a friend would, not in every reply."
+
+
+def build_system_prompt(persona: Persona, *, tools: bool = False, memories: list[str] | None = None,
+                        user_name: str | None = None) -> str:
     p = persona.system_prompt.strip() + EXPRESSION_INSTRUCTIONS.format(tags=", ".join(f"[{t}]" for t in persona.expression_tags()))
+    if user_name and user_name.strip():
+        p += USER_NAME_NOTE.format(name=user_name.strip())
     if tools:
         p += TOOL_INSTRUCTIONS
     if memories:
@@ -101,9 +107,10 @@ class Turn:
     def __init__(self, *, llm: LlmClient, tts: KokoroTTS | None, persona: Persona, history: list[dict],
                  send: Send, speak: bool = True, max_tokens: int = 400, registry: ToolRegistry | None = None,
                  ctx: ToolContext | None = None, confirm: Confirm | None = None, memories: list[str] | None = None,
-                 max_steps: int = 10):
+                 max_steps: int = 10, user_name: str | None = None):
         self.llm, self.tts, self.persona, self.history, self.send = llm, tts, persona, history, send
         self.speak = speak and tts is not None
+        self.user_name = user_name
         self.max_tokens = max_tokens
         self.registry, self.ctx, self.confirm, self.memories, self.max_steps = registry, ctx, confirm, memories, max_steps
         self.turn_id = uuid.uuid4().hex[:8]
@@ -126,7 +133,7 @@ class Turn:
         if self.memories:
             parts.append("You remember: " + "; ".join(self.memories[-12:]) + ".")
         user_content = user_text if not parts else f"{user_text}\n\n(Private context, do not read aloud: {' '.join(parts)})"
-        messages = [{"role": "system", "content": build_system_prompt(self.persona, tools=use_tools)},
+        messages = [{"role": "system", "content": build_system_prompt(self.persona, tools=use_tools, user_name=self.user_name)},
                     *(FEW_SHOT if use_tools else []), *self.history, {"role": "user", "content": user_content}]
         tools = self.registry.openai_tools() if use_tools else None
         full_spoken = ""

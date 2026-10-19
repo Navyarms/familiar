@@ -24,6 +24,9 @@ export function App() {
   const [hotkeys, setHotkeys] = useState<{ summon: string; talk: string; kill: string } | null>(null);
   const [startup, setStartup] = useState<boolean | null>(null);
   const [avatarMode, setAvatarModeState] = useState<'always' | 'summoned'>('always');
+  const [userName, setUserName] = useState('');
+  const [userSpoken, setUserSpoken] = useState('');
+  useEffect(() => { if (settings) { setUserName(settings.user_name ?? ''); setUserSpoken(settings.user_name_spoken ?? ''); } }, [settings?.user_name, settings?.user_name_spoken]);
   const setAvatarMode = async (m: 'always' | 'summoned') => { setAvatarModeState(m); await window.familiar.shell.setAvatarMode(m); };
   const [tab, setTab] = useState<'general' | 'voice' | 'input' | 'models' | 'privacy' | 'tools'>('general');
 
@@ -80,6 +83,21 @@ export function App() {
 
       {tab === 'general' && (
         <>
+          <h2>You</h2>
+          <div className="card">
+            <dl className="kv">
+              <dt>Call me</dt>
+              <dd className="row">
+                <input className="grow" placeholder="your name (optional)" value={userName} onChange={(e) => setUserName(e.target.value)} onBlur={() => update({ user_name: userName.trim() || null })} onKeyDown={(e) => { if (e.key === 'Enter') update({ user_name: userName.trim() || null }); }} />
+              </dd>
+              <dt>Say it as</dt>
+              <dd className="row">
+                <input className="grow" placeholder="only if it sounds wrong: spell it the way it sounds, e.g. “Dillon”" value={userSpoken} onChange={(e) => setUserSpoken(e.target.value)} onBlur={() => update({ user_name_spoken: userSpoken.trim() || null })} onKeyDown={(e) => { if (e.key === 'Enter') update({ user_name_spoken: userSpoken.trim() || null }); }} />
+                <button disabled={!userName.trim()} onClick={() => { update({ user_name: userName.trim() || null, user_name_spoken: userSpoken.trim() || null }); send({ type: 'voice.preview', voice: voices?.current ?? active?.voice ?? 'af_heart', speed: 1.0, text: `Hi ${userName.trim()}, good to see you.` }); }}>▶ Hear it</button>
+              </dd>
+            </dl>
+            <p className="muted" style={{ marginBottom: 0 }}>{active?.name ?? 'Wisp'} will use your name now and then. The spelling only changes how it is pronounced, never how it is written.</p>
+          </div>
           <h2>Persona</h2>
           <div className="card">
             {personas.length === 0 ? <span className="muted">waiting for the brain…</span> : (
