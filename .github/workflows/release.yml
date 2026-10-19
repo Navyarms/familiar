@@ -2,6 +2,8 @@ name: release
 
 # Tag a version (v0.1.0) to build the brain (PyInstaller) and the Windows installer (electron-builder) and attach
 # them to a GitHub Release. electron-updater reads latest.yml from the same release for auto-update.
+# Assets are uploaded with the gh CLI rather than electron-builder's publisher, which created two draft releases
+# for the same tag on the first run (one got the blockmap, the other the installer and latest.yml).
 on:
   push:
     tags: ["v*"]
@@ -28,6 +30,25 @@ jobs:
         run: |
           npm ci
           npm run build
-          npx --workspace apps/shell electron-builder --win --publish always
+          npx --workspace apps/shell electron-builder --win --publish never
+      - name: Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          tag="${GITHUB_REF_NAME}"
+          files=(apps/shell/release/Familiar-Setup-*.exe apps/shell/release/Familiar-Setup-*.exe.blockmap apps/shell/release/latest.yml)
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release upload "$tag" "${files[@]}" --clobber
+          else
+            gh release create "$tag" "${files[@]}" --title "Familiar ${tag#v}" --generate-notes
+          fi
+      - uses: actions/upload-artifact@v4
+        if: "!startsWith(github.ref, 'refs/tags/v')"
+        with:
+          name: Familiar-Setup
+          path: |
+            apps/shell/release/Familiar-Setup-*.exe
+            apps/shell/release/Familiar-Setup-*.exe.blockmap
+            apps/shell/release/latest.yml
